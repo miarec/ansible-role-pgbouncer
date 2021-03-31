@@ -1,0 +1,8 @@
+- name: install EPEL repository | RedHat
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - epel-release
+
+  when: ansible_os_family == "RedHat"  

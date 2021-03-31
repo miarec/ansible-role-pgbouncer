@@ -1,0 +1,14 @@
+---
+- name: restart pgbouncer
+  service: 
+    name: pgbouncer
+    state: restarted
+  become: yes
+
+# Note: we are using "service restart" because "service reload" hangs on Centos 7
+# for unknown reasons. Something is wrong with SystemD service config file.
+- name: reload pgbouncer
+  service: 
+    name: pgbouncer
+    state: restarted
+  become: yes

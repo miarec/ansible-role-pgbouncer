@@ -1,0 +1,8 @@
+---
+- import_tasks: include-vars.yml
+
+- import_tasks: dependencies.yml
+  become: yes
+
+- import_tasks: pgbouncer.yml
+  become: yes

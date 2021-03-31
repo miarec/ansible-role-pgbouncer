@@ -1,0 +1,63 @@
+---
+- name: Install pgbouncer
+  package:
+    name: pgbouncer
+    state: present
+
+- name: Divert pgbouncer main configuration file {{ pgbouncer_conf_file }}
+  command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}.dpkg-divert --rename {{ pgbouncer_conf_file }}
+  args:
+    creates: "{{ pgbouncer_conf_file }}.dpkg-divert"
+  when: ansible_os_family == "Debian"
+
+- name: Create pgbouncer configuration file
+  template:
+    src: pgbouncer.ini.j2
+    dest: "{{ pgbouncer_conf_file }}"
+    owner: "{{ pgbouncer_user }}"
+    group: "{{ pgbouncer_group }}"
+    mode: 0600
+  notify:
+    - reload pgbouncer
+
+- name: Divert pgbouncer hba file {{ pgbouncer_auth_hba_file }}
+  command: dpkg-divert --quiet --local --divert {{ pgbouncer_auth_hba_file }}.dpkg-divert --rename {{ pgbouncer_auth_hba_file }}
+  args:
+    creates: "{{ pgbouncer_auth_hba_file }}.dpkg-divert"
+  when: ansible_os_family == "Debian"
+
+- name: pgbouncer hba file {{ pgbouncer_auth_hba_file }}
+  template:
+    src: pgbouncer_hba.conf.j2
+    dest: "{{ pgbouncer_auth_hba_file }}"
+    owner: "{{ pgbouncer_user }}"
+    group: "{{ pgbouncer_group }}"
+    mode: 0640
+  notify:
+    - reload pgbouncer
+
+- name: Divert pgbouncer user list file {{ pgbouncer_confdir }}/userlist.txt
+  command: dpkg-divert --quiet --local --divert {{ pgbouncer_confdir }}/userlist.txt.dpkg-divert --rename {{ pgbouncer_confdir }}/userlist.txt
+  args:
+    creates: "{{ pgbouncer_confdir }}/userlist.txt.dpkg-divert"
+  when: ansible_os_family == "Debian"
+
+- name: Add users to userlist.txt
+  copy:
+    dest: "{{ pgbouncer_auth_file }}"
+    owner: "{{ pgbouncer_user }}"
+    group: "{{ pgbouncer_group }}"
+    mode: 0600
+    content: |
+      "stats" "passwordless"
+      {% for user in pgbouncer_users %}
+      "{{ user.name }}" "md5{{ (user.pass + user.name) | hash('md5') }}"
+      {% endfor %}
+  notify:
+    - reload pgbouncer
+
+
+- name: Ensure pgbouncer is running
+  service:
+    name: pgbouncer
+    state: started

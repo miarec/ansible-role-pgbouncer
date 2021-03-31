@@ -1,0 +1,2 @@
+---
+pgbouncer_unix_socket_dir: /tmp
