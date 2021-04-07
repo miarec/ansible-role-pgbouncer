@@ -68,21 +68,19 @@
 #
 
 {% for record in pgbouncer_hba_default %}
-{% if record.comment is defined -%}
-   # {{ record.comment }}
-
+{% if record.comment is defined %}
+# {{ record.comment }}
 {% endif %}
 {{ record.type | mandatory }}   {{ record.database | mandatory }}   {{ record.user | mandatory }}   {{ record.address }}    {{ record.method | mandatory }}
-{%- endfor %}
+{% endfor %}
 
 #
 # pgbouncer_hba_custom records
 #
 
 {% for record in pgbouncer_hba_custom %}
-{% if record.comment is defined -%}
-  # {{ record.comment }}
-
+{% if record.comment is defined %}
+# {{ record.comment }}
 {% endif %}
 {{ record.type | mandatory }}   {{ record.database | mandatory }}   {{ record.user | mandatory }}   {{ record.address }}    {{ record.method | mandatory }}
-{%- endfor %}
+{%endfor %}
