@@ -56,6 +56,10 @@
   notify:
     - reload pgbouncer
 
+- name: Ensure pgbouncer service is enabled
+  service:
+    name: pgbouncer
+    enabled: yes
 
 - name: Ensure pgbouncer is running
   service:
