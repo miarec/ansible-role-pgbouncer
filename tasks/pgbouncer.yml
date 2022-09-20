@@ -65,3 +65,8 @@
   service:
     name: pgbouncer
     state: started
+
+- name: Configure logrotate | pgbouncer
+  template:
+    src: "etc_logrotate.d_pgbouncer.j2"
+    dest: "/etc/logrotate.d/pgbouncer"
