@@ -40,11 +40,7 @@ pgbouncer_stats_users:
   - postgres
   - stats
 
-
-###
 ### Administrative settings
-###
-
 pgbouncer_listen_addr: "*"
 pgbouncer_listen_port: 6432
 
@@ -54,17 +50,13 @@ pgbouncer_unix_socket_dir: /tmp
 pgbouncer_unix_socket_mode: 0755
 pgbouncer_unix_socket_group: ""
 
-###
 ### Authentication settings
-###
 pgbouncer_auth_type: hba
 pgbouncer_auth_file: /etc/pgbouncer/userlist.txt
 pgbouncer_auth_hba_file: /etc/pgbouncer/pgbouncer_hba.conf
 pgbouncer_auth_query: SELECT usename, passwd FROM pg_shadow WHERE usename=$1
 
-###
 ### Pooler personality questions
-###
 pgbouncer_pool_mode: transaction
 
 pgbouncer_server_reset_query: DISCARD ALL
@@ -76,9 +68,7 @@ pgbouncer_application_name_add_host: 0
 pgbouncer_stats_period: 60
 pgbouncer_server_fast_close: 0
 
-###
 ### Connection limits
-###
 pgbouncer_max_client_conn: 100
 pgbouncer_default_pool_size: 20
 pgbouncer_min_pool_size: 0
@@ -88,9 +78,7 @@ pgbouncer_max_db_connections: 50
 pgbouncer_max_user_connections: 50
 pgbouncer_server_round_robin: 0
 
-###
 ### Logging
-###
 pgbouncer_syslog: 0
 pgbouncer_syslog_facility: daemon
 pgbouncer_syslog_ident: pgbouncer
@@ -100,10 +88,7 @@ pgbouncer_log_pooler_errors: 1
 pgbouncer_log_stats: 1
 pgbouncer_verbose: 0
 
-
-###
 ### Timeouts
-###
 pgbouncer_server_lifetime: 3600
 pgbouncer_server_idle_timeout: 600
 pgbouncer_server_connect_timeout: 15
@@ -116,9 +101,7 @@ pgbouncer_autodb_idle_timeout: 3600
 pgbouncer_suspend_timeout: 10
 pgbouncer_idle_transaction_timeout: 0
 
-###
 ### Low-level tuning options
-###
 pgbouncer_pkt_buf: 4096
 pgbouncer_listen_backlog: 128
 pgbouncer_sbuf_loopcnt: 5
@@ -134,8 +117,5 @@ pgbouncer_dns_max_ttl: 15
 pgbouncer_dns_zone_check_period: 0
 pgbouncer_dns_nxdomain_ttl: 15
 
-###
 ### Random stuff
-###
 pgbouncer_disable_pqexec: 0
-

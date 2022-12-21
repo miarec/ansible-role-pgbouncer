@@ -59,7 +59,7 @@
 - name: Ensure pgbouncer service is enabled
   service:
     name: pgbouncer
-    enabled: yes
+    enabled: true
 
 - name: Ensure pgbouncer is running
   service:

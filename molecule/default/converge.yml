@@ -20,5 +20,3 @@
     - role: ansible-role-pgbouncer
       tags:
         - pgbouncer
-
-
