@@ -1,7 +1,4 @@
 ---
-pgbouncer_user: pgbouncer
-pgbouncer_group: pgbouncer
-
 pgbouncer_conf_file: /etc/pgbouncer/pgbouncer.ini
 pgbouncer_conf_dir: /etc/pgbouncer/
 
