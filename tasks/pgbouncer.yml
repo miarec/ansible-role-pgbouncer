@@ -36,10 +36,10 @@
   notify:
     - reload pgbouncer
 
-- name: Divert pgbouncer user list file {{ pgbouncer_confdir }}/userlist.txt
-  command: dpkg-divert --quiet --local --divert {{ pgbouncer_confdir }}/userlist.txt.dpkg-divert --rename {{ pgbouncer_confdir }}/userlist.txt
+- name: Divert pgbouncer user list file {{ pgbouncer_conf_dir }}/userlist.txt
+  command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert --rename {{ pgbouncer_conf_dir }}/userlist.txt
   args:
-    creates: "{{ pgbouncer_confdir }}/userlist.txt.dpkg-divert"
+    creates: "{{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert"
   when: ansible_os_family == "Debian"
 
 - name: Add users to userlist.txt
