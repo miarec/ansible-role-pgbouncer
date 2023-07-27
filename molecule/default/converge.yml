@@ -20,6 +20,6 @@
           when: ansible_os_family == "Debian"
 
   roles:
-    - role: ansible-pgbouncer
+    - role: ansible-role-pgbouncer
       tags:
         - pgbouncer
