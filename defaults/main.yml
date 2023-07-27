@@ -63,8 +63,8 @@ pgbouncer_unix_socket_group: ""
 ### Authentication settings
 ###
 pgbouncer_auth_type: hba
-pgbouncer_auth_file: /etc/pgbouncer/userlist.txt
-pgbouncer_auth_hba_file: /etc/pgbouncer/pgbouncer_hba.conf
+pgbouncer_auth_file: "{{ pgbouncer_conf_dir }}/userlist.txt"
+pgbouncer_auth_hba_file: "{{ pgbouncer_conf_dir }}/pgbouncer_hba.conf"
 pgbouncer_auth_query: SELECT usename, passwd FROM pg_shadow WHERE usename=$1
 
 ###

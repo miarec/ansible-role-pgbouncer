@@ -17,6 +17,7 @@
   package:
     name: pgbouncer
     state: present
+  register: _pgbouncer_install
 
 - name: Create pgbouncer directories
   file:
@@ -33,7 +34,9 @@
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}.dpkg-divert --rename {{ pgbouncer_conf_file }}
   args:
     creates: "{{ pgbouncer_conf_file }}.dpkg-divert"
-  when: ansible_os_family == "Debian"
+  when:
+    - _pgbouncer_install.changed
+    - ansible_os_family == "Debian"
 
 - name: Create pgbouncer configuration file
   template:
@@ -49,7 +52,9 @@
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_auth_hba_file }}.dpkg-divert --rename {{ pgbouncer_auth_hba_file }}
   args:
     creates: "{{ pgbouncer_auth_hba_file }}.dpkg-divert"
-  when: ansible_os_family == "Debian"
+  when:
+    - _pgbouncer_install.changed
+    - ansible_os_family == "Debian"
 
 - name: pgbouncer hba file {{ pgbouncer_auth_hba_file }}
   template:
