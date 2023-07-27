@@ -18,26 +18,6 @@
     name: pgbouncer
     state: present
 
-# - name: Create the pgbouncer group
-#   group:
-#     name: "{{ pgbouncer_group }}"
-#     state: present
-#     system: true
-#   when:
-#     - pgbouncer_group != "root"
-
-# - name: Create the pgbouncer user
-#   user:
-#     name: "{{ pgbouncer_user }}"
-#     groups: "{{ pgbouncer_group }}"
-#     # append: true
-#     # shell: /usr/sbin/nologin
-#     # system: true
-#     # createhome: false
-#     # home: /
-#   when:
-#     - pgbouncer_user != "root"
-
 - name: Create pgbouncer directories
   file:
     path: "{{ item }}"
@@ -48,15 +28,6 @@
   with_items:
     - "{{ pgbouncer_log_dir }}"
     - "{{ pgbouncer_pid_dir }}"
-
-
-# - name: Create pgbouncer pid directory
-#   file:
-#     path: "{{ pgbouncer_log_dir }}"
-#     state: directory
-#     owner: "{{ pgbouncer_user }}"
-#     group: "{{ pgbouncer_group }}"
-#     mode: 0755
 
 - name: Divert pgbouncer main configuration file {{ pgbouncer_conf_file }}
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}.dpkg-divert --rename {{ pgbouncer_conf_file }}
