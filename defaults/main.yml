@@ -76,6 +76,7 @@ pgbouncer_client_tls_sslmode: prefer
 # verify-ca - Client must use TLS with valid client certificate.
 # verify-full - Same as verify-ca
 
+
 pgbouncer_client_tls_ca_file:            # Root certificate file to validate client certificates.
 pgbouncer_client_tls_key_file:           # Certificate for private key. Clients can validate it.
 pgbouncer_client_tls_cert_file:          # Private key for PgBouncer to accept client connections.
