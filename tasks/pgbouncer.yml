@@ -1,14 +1,42 @@
 ---
-- name: Install pgbouncer
+- name: Add PgBouncer repository apt-key | apt
+  apt_key:
+    id: "{{ pgbouncer_apt_key_id }}"
+    url: "{{ pgbouncer_apt_key_url }}"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Add PgBouncer repository | apt
+  apt_repository:
+    repo: "{{ pgbouncer_apt_repository }}"
+    state: present
+  when: ansible_os_family == "Debian"
+
+
+- name: Install PgBouncer
   package:
     name: pgbouncer
     state: present
+  register: _pgbouncer_install
+
+- name: Create pgbouncer directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ pgbouncer_user }}"
+    group: "{{ pgbouncer_group }}"
+    mode: 0755
+  with_items:
+    - "{{ pgbouncer_log_dir }}"
+    - "{{ pgbouncer_pid_dir }}"
 
 - name: Divert pgbouncer main configuration file {{ pgbouncer_conf_file }}
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}.dpkg-divert --rename {{ pgbouncer_conf_file }}
   args:
     creates: "{{ pgbouncer_conf_file }}.dpkg-divert"
-  when: ansible_os_family == "Debian"
+  when:
+    - _pgbouncer_install.changed
+    - ansible_os_family == "Debian"
 
 - name: Create pgbouncer configuration file
   template:
@@ -24,7 +52,9 @@
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_auth_hba_file }}.dpkg-divert --rename {{ pgbouncer_auth_hba_file }}
   args:
     creates: "{{ pgbouncer_auth_hba_file }}.dpkg-divert"
-  when: ansible_os_family == "Debian"
+  when:
+    - _pgbouncer_install.changed
+    - ansible_os_family == "Debian"
 
 - name: pgbouncer hba file {{ pgbouncer_auth_hba_file }}
   template:
@@ -36,10 +66,10 @@
   notify:
     - reload pgbouncer
 
-- name: Divert pgbouncer user list file {{ pgbouncer_confdir }}/userlist.txt
-  command: dpkg-divert --quiet --local --divert {{ pgbouncer_confdir }}/userlist.txt.dpkg-divert --rename {{ pgbouncer_confdir }}/userlist.txt
+- name: Divert pgbouncer user list file {{ pgbouncer_conf_dir }}/userlist.txt
+  command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert --rename {{ pgbouncer_conf_dir }}/userlist.txt
   args:
-    creates: "{{ pgbouncer_confdir }}/userlist.txt.dpkg-divert"
+    creates: "{{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert"
   when: ansible_os_family == "Debian"
 
 - name: Add users to userlist.txt
@@ -59,7 +89,7 @@
 - name: Ensure pgbouncer service is enabled
   service:
     name: pgbouncer
-    enabled: yes
+    enabled: true
 
 - name: Ensure pgbouncer is running
   service:

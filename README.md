@@ -1,4 +1,6 @@
 # ansible-role-pgbouncer
+![CI](https://github.com/miarec/ansible-role-pgbouncer/actions/workflows/ci.yml/badge.svg?event=push)
+
 Ansible role to install PGBouncer connection pooler.
 
 Postgres server performance degrades when handling a high number of connection due to a 1:1 mapping of connection to Postgres backend processes. PgBouncer is a threaded pooler which can reduce the number of backend processes and the handshaking involved in setting up a new connection.
@@ -71,14 +73,14 @@ None.
             pass: unencrypted_password
           - name: postgres
             host: unencrypted_password
-    
+
         pgbouncer_databases:
           - name: "*"
             host: 127.0.0.1
             port: 5432
-    
+
         pgbouncer_max_client_conn: 200
-    
+
       roles:
         - ansible-role-pgbouncer
 
