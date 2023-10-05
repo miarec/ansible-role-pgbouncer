@@ -67,7 +67,7 @@ pgbouncer_unix_socket_group: ""
 ### https://www.pgbouncer.org/config.html#tls-settings
 ###
 
-pgbouncer_client_tls: false  # If true, pgbouncer will be configured to use TLS to connect to a backend
+pgbouncer_client_tls: false  # If true, pgbouncer will be configured to use TLS for inbound connections from clients
 
 pgbouncer_client_tls_sslmode: prefer
 # TLS mode to use for connections from clients. TLS connections are disabled by default.
@@ -81,8 +81,8 @@ pgbouncer_client_tls_sslmode: prefer
 
 
 pgbouncer_client_tls_ca_file:            # Root certificate file to validate client certificates.
-pgbouncer_client_tls_key_file:           # Certificate for private key. Clients can validate it.
-pgbouncer_client_tls_cert_file:          # Private key for PgBouncer to accept client connections.
+pgbouncer_client_tls_key_file:           # Private key for PgBouncer to accept client connections.
+pgbouncer_client_tls_cert_file:          # Certificate for private key. Clients can validate it.
 
 
 
