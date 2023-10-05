@@ -1,5 +1,2 @@
 ---
 pgbouncer_unix_socket_dir: /tmp
-
-pgbouncer_user: pgbouncer
-pgbouncer_group: pgbouncer
