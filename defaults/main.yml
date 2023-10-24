@@ -1,4 +1,7 @@
 ---
+pgbouncer_user: "{{ 'pgbouncer' if ansible_os_family == 'RedHat' else 'postgres' }}"
+pgbouncer_group: "{{ pgbouncer_user }}"
+
 pgbouncer_conf_dir: /etc/pgbouncer
 pgbouncer_conf_file: "{{ pgbouncer_conf_dir }}/pgbouncer.ini"
 
@@ -64,7 +67,7 @@ pgbouncer_unix_socket_group: ""
 ### https://www.pgbouncer.org/config.html#tls-settings
 ###
 
-pgbouncer_client_tls: false  # If true, pgbouncer will be configured to use TLS to connect to a backend
+pgbouncer_client_tls: false  # If true, pgbouncer will be configured to use TLS for inbound connections from clients
 
 pgbouncer_client_tls_sslmode: prefer
 # TLS mode to use for connections from clients. TLS connections are disabled by default.
@@ -78,10 +81,8 @@ pgbouncer_client_tls_sslmode: prefer
 
 
 pgbouncer_client_tls_ca_file:            # Root certificate file to validate client certificates.
-pgbouncer_client_tls_key_file:           # Certificate for private key. Clients can validate it.
-pgbouncer_client_tls_cert_file:          # Private key for PgBouncer to accept client connections.
-
-
+pgbouncer_client_tls_key_file:           # Private key for PgBouncer to accept client connections.
+pgbouncer_client_tls_cert_file:          # Certificate for private key. Clients can validate it.
 
 pgbouncer_client_tls_protocols: secure
 # Which TLS protocol versions are allowed.
@@ -91,7 +92,6 @@ pgbouncer_client_tls_protocols: secure
 pgbouncer_client_tls_ciphers: fast        # Allowed TLS ciphers, in OpenSSL syntax. Shortcuts: default/secure, compat/legacy, insecure/all, normal, fast.
 pgbouncer_client_tls_dhparams: auto       # DHE key exchange type. Allowed values: none (DH is disabled), auto (2048-bit DH), legacy (1024-bit DH)
 pgbouncer_client_tls_ecdhcurve: auto      # Elliptic Curve name to use for ECDH key exchanges. Allowed values: none (DH is disabled), auto (256-bit ECDH), curve name
-
 
 ###
 ### TLS settings for connecting to backend databases
@@ -112,12 +112,12 @@ pgbouncer_server_tls_ca_file:          # Root certificate file to validate Postg
 pgbouncer_server_tls_key_file:         # Private key for PgBouncer to authenticate against PostgreSQL serve
 pgbouncer_server_tls_cert_file:        # Certificate for private key. PostgreSQL server can validate i
 
-pgbouncer_server_tls_ca_file: secure
+pgbouncer_server_tls_protocols: secure
 # Which TLS protocol versions are allowed.
 # Allowed values: tlsv1.0, tlsv1.1, tlsv1.2, tlsv1.3.
 # Shortcuts: all (tlsv1.0,tlsv1.1,tlsv1.2,tlsv1.3), secure (tlsv1.2,tlsv1.3), legacy (all)
 
-pgbouncer_server_tls_ca_file: fast
+pgbouncer_server_tls_cipers: fast
 # Allowed TLS ciphers, in OpenSSL syntax. Shortcuts: default/secure, compat/legacy, insecure/all, normal, fast.
 
 
