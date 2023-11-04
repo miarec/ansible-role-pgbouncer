@@ -30,6 +30,13 @@
     - "{{ pgbouncer_log_dir }}"
     - "{{ pgbouncer_pid_dir }}"
 
+- name: Create systemd tmpfiles configuration
+  template:
+    src: tmpfiles.d_pgbouncer.conf.j2
+    dest: /usr/lib/tmpfiles.d/pgbouncer.conf
+    mode: 0644
+  when: ansible_os_family == "Debian"
+
 - name: Divert pgbouncer main configuration file {{ pgbouncer_conf_file }}
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}.dpkg-divert --rename {{ pgbouncer_conf_file }}
   args:
