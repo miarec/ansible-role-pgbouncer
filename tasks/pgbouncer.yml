@@ -3,16 +3,16 @@
 # however module Requires ansible 2.15, ansible pacakage version for Centos7 is 2.9
 - name: Add PgBouncer apt repository | apt
   block:
-  - name: Add PgBouncer apt-key | apt
-    get_url:
-      url: "{{ pgbouncer_apt_key_url }}"
-      dest: "/etc/apt/trusted.gpg.d/{{ pgbouncer_apt_key_id }}.asc"
-      mode: '0644'
-      force: true
-  - name: Add PgBouncer apt repository | apt
-    apt_repository:
-      repo: "{{ pgbouncer_apt_repository }}"
-      state: present
+    - name: Add PgBouncer apt-key | apt
+      get_url:
+        url: "{{ pgbouncer_apt_key_url }}"
+        dest: "/etc/apt/trusted.gpg.d/{{ pgbouncer_apt_key_id }}.asc"
+        mode: '0644'
+        force: true
+    - name: Add PgBouncer apt repository | apt
+      apt_repository:
+        repo: "{{ pgbouncer_apt_repository }}"
+        state: present
   when: ansible_os_family == "Debian"
 
 
