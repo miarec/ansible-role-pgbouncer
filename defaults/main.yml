@@ -41,7 +41,7 @@ pgbouncer_stats_users:
 # APT settings
 pgbouncer_apt_key_id: "ACCC4CF8"
 pgbouncer_apt_key_url: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
-pgbouncer_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main {{ postgresql_version | default ('') }}"
+pgbouncer_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main"
 
 
 ###
