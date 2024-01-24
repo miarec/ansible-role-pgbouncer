@@ -13,12 +13,6 @@
           changed_when: false
           when: ansible_os_family == "Debian"
 
-        - name: Install gpg-agent
-          apt:
-            name: gpg-agent
-            state: present
-          when: ansible_os_family == "Debian"
-
   roles:
     - role: ansible-role-pgbouncer
       tags:
