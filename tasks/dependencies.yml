@@ -1,8 +1,44 @@
 ---
-- name: install EPEL repository | RedHat
+- name: Install EPEL | CentOS-Rocky
   package:
-    name: "{{ item }}"
+    name: epel-release
     state: present
-  with_items:
-    - epel-release
-  when: ansible_os_family == "RedHat"
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution != "RedHat"
+
+- name: Install EPEL | RedHat
+  when: ansible_distribution == "RedHat"
+  block:
+
+    - name: Import EPEL GPG key | RedHat
+      rpm_key:
+        key: "http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}"
+        state: present
+
+    - name: Install EPEL | RedHat
+      package:
+        name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
+        state: present
+
+# This will need replaced with deb822_repository eventually,
+# however module Requires ansible 2.15, ansible pacakage version for Centos7 is 2.9
+- name: Add PgBouncer apt repository | Debian
+  when: ansible_os_family == "Debian"
+  block:
+    - name: Make sure the CA certificates are available | Debian
+      apt:
+        pkg: ca-certificates
+        state: present
+
+    - name: Add PgBouncer apt-key | Debian
+      get_url:
+        url: "{{ pgbouncer_apt_key_url }}"
+        dest: "/etc/apt/trusted.gpg.d/{{ pgbouncer_apt_key_id }}.asc"
+        mode: '0644'
+        force: true
+
+    - name: Add PgBouncer apt repository | Debian
+      apt_repository:
+        repo: "{{ pgbouncer_apt_repository }}"
+        state: present

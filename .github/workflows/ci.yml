@@ -5,6 +5,7 @@ name: Ansible role testing
   push:
     branches:
       - master
+      - 20240207-extend-os-support
     paths-ignore:
       - '**.md'
 
@@ -34,6 +35,11 @@ jobs:
           - ubuntu2004
           - ubuntu2204
           - centos7
+          - rockylinux8
+          - rockylinux9
+          - rhel7
+          - rhel8
+          - rhel9
 
     steps:
       - name: Check out the Repository
