@@ -1,8 +1,11 @@
 ---
-- import_tasks: include-vars.yml
+- name: Set OS Specific variables
+  import_tasks: include-vars.yml
 
-- import_tasks: dependencies.yml
+- name: Install Dependencies
+  import_tasks: dependencies.yml
   become: true
 
-- import_tasks: pgbouncer.yml
+- name: Install and configure pgbouncer
+  import_tasks: pgbouncer.yml
   become: true
