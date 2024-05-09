@@ -16,3 +16,4 @@ MOLECULE_DISTRO=centos7 molecule test
     - `ubuntu2204`
     - `ubuntu2004`
     - `centos7`
+ - `MOLECULE_ANSIBLE_VERBOSITY` 0-3 used for troubleshooting, will set verbosity of ansible output, same as `-vvv`, default `0`
