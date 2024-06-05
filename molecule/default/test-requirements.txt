@@ -1,5 +1,5 @@
-requests==2.31.0
-ansible==9.6.0  # latest version requires python3.7 or higher,  python pacakages for python3.6 or higher are not available on CentOS7/RHEL7
+requests==2.31.0 # version 2.32+ causes issue with molecule and docker
+ansible==9.6.0  # version 10.0.0+ requires python3.7+, pacakages for python3.7+ are not available on CentOS7/RHEL7
 molecule
 molecule-plugins[docker]
 docker
