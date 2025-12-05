@@ -39,7 +39,7 @@ N/A
 Brief list of main changes:
 
 * Added 17 new TLS-related variables in `defaults/main.yml`:
-  - Client TLS: `pgbouncer_client_tls`, `pgbouncer_client_tls_sslmode`, `pgbouncer_client_tls_ca_file`, `pgbouncer_client_tls_key_file`, `pgbouncer_client_tls_cert_file`, `pgbouncer_client_tls_protocols`, `pgbouncer_client_tls_ciphers`, `pgbouncer_client_tls_dhparams`, `pgbouncer_client_tls_ecdhcurve`
+  - Client TLS: `pgbouncer_client_tls`, `pgbouncer_client_tls_sslmode`, `pgbouncer_client_tls_ca_file`, `pgbouncer_client_tls_key_file`, `pgbouncer_client_tls_cert_file`, `pgbouncer_client_tls_protocols`, `pgbouncer_client_tls_ciphers`, `pgbouncer_client_tls_dheparams`, `pgbouncer_client_tls_ecdhcurve`
   - Server TLS: `pgbouncer_server_tls`, `pgbouncer_server_tls_sslmode`, `pgbouncer_server_tls_ca_file`, `pgbouncer_server_tls_key_file`, `pgbouncer_server_tls_cert_file`, `pgbouncer_server_tls_protocols`, `pgbouncer_server_tls_ciphers`
 * Updated `templates/pgbouncer.ini.j2` to conditionally render TLS configuration sections
 * Added comprehensive TLS documentation to README.md with examples and SSL mode reference table

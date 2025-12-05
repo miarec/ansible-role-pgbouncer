@@ -166,7 +166,7 @@ pgbouncer_client_tls_protocols: secure
 # Shortcuts: all (tlsv1.0,tlsv1.1,tlsv1.2,tlsv1.3), secure (tlsv1.2,tlsv1.3), legacy (all).
 
 pgbouncer_client_tls_ciphers: fast         # Allowed TLS ciphers, in OpenSSL syntax. Shortcuts: default/secure, compat/legacy, insecure/all, normal, fast.
-pgbouncer_client_tls_dhparams: auto        # DHE key exchange type. Allowed values: none (DH is disabled), auto (2048-bit DH), legacy (1024-bit DH)
+pgbouncer_client_tls_dheparams: auto       # DHE key exchange type. Allowed values: none (DH is disabled), auto (2048-bit DH), legacy (1024-bit DH)
 pgbouncer_client_tls_ecdhcurve: auto       # Elliptic Curve name to use for ECDH key exchanges. Allowed values: none (DH is disabled), auto (256-bit ECDH), curve name
 
 ###
