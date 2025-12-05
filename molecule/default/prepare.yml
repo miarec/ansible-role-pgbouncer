@@ -1,0 +1,133 @@
+---
+- name: Prepare PostgreSQL for PGBouncer testing
+  hosts: all
+  become: true
+
+  vars:
+    test_db_user: testuser
+    test_db_password: testpassword
+    test_db_name: testdb
+
+  tasks:
+    # Debian/Ubuntu installation
+    - name: Install PostgreSQL (Debian/Ubuntu)
+      when: ansible_os_family == "Debian"
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: true
+            cache_valid_time: 600
+          changed_when: false
+
+        - name: Install PostgreSQL packages
+          apt:
+            name:
+              - postgresql
+              - postgresql-contrib
+              - postgresql-client
+              - python3-psycopg2
+            state: present
+
+    # RedHat/Rocky installation
+    - name: Install PostgreSQL (RedHat/Rocky)
+      when: ansible_os_family == "RedHat"
+      block:
+        - name: Install PostgreSQL packages
+          yum:
+            name:
+              - postgresql-server
+              - postgresql-contrib
+              - python3-psycopg2
+            state: present
+
+        - name: Check if PostgreSQL is initialized
+          stat:
+            path: /var/lib/pgsql/data/pg_hba.conf
+          register: pg_hba_conf
+
+        - name: Initialize PostgreSQL database
+          command: postgresql-setup --initdb
+          changed_when: true
+          when: not pg_hba_conf.stat.exists
+
+    # Start PostgreSQL service
+    - name: Start and enable PostgreSQL service
+      service:
+        name: postgresql
+        state: started
+        enabled: true
+
+    # Configure PostgreSQL for pgbouncer testing
+    - name: Find PostgreSQL config directory (Debian)
+      when: ansible_os_family == "Debian"
+      block:
+        - name: Get PostgreSQL version directory
+          shell: set -o pipefail && ls -1 /etc/postgresql/ | head -1
+          args:
+            executable: /bin/bash
+          register: pg_version
+          changed_when: false
+
+        - name: Set PostgreSQL paths for Debian
+          set_fact:
+            pg_hba_file: "/etc/postgresql/{{ pg_version.stdout }}/main/pg_hba.conf"
+
+    - name: Set PostgreSQL paths for RedHat
+      when: ansible_os_family == "RedHat"
+      set_fact:
+        pg_hba_file: "/var/lib/pgsql/data/pg_hba.conf"
+
+    - name: Set password_encryption to md5 for PGBouncer compatibility
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_set:
+        name: password_encryption
+        value: md5
+      notify: Reload PostgreSQL
+
+    - name: Flush handlers to apply password_encryption setting
+      meta: flush_handlers
+
+    - name: Create test database
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ test_db_name }}"
+        state: present
+
+    - name: Create test user with password
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: "{{ test_db_user }}"
+        password: "{{ test_db_password }}"
+        state: present
+
+    - name: Grant privileges to test user
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_privs:
+        database: "{{ test_db_name }}"
+        privs: ALL
+        type: database
+        role: "{{ test_db_user }}"
+
+    - name: Configure pg_hba.conf for md5 authentication from localhost
+      community.postgresql.postgresql_pg_hba:
+        dest: "{{ pg_hba_file }}"
+        contype: host
+        databases: all
+        users: all
+        source: 127.0.0.1/32
+        method: md5
+        state: present
+      notify: Reload PostgreSQL
+
+    - name: Flush handlers to reload PostgreSQL immediately
+      meta: flush_handlers
+
+  handlers:
+    - name: Reload PostgreSQL
+      service:
+        name: postgresql
+        state: reloaded

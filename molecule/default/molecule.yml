@@ -4,7 +4,7 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: instance
+  - name: ansible-role-pgbouncer
     image: ghcr.io/miarec/${MOLECULE_DISTRO:-ubuntu2404}-systemd:latest
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
@@ -16,6 +16,7 @@ platforms:
 provisioner:
   name: ansible
   playbooks:
+    prepare: prepare.yml
     converge: ${MOLECULE_PLAYBOOK:-converge.yml}
   env:
     ANSIBLE_VERBOSITY: ${MOLECULE_ANSIBLE_VERBOSITY:-0}

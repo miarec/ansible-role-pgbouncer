@@ -40,7 +40,7 @@ Standard Ansible role structure:
 - `tasks/pgbouncer.yml` - Main configuration tasks
 - `vars/Debian.yml`, `vars/RedHat.yml` - OS-family specific variables
 - `templates/pgbouncer.ini.j2` - Main config template with parameter documentation
-- `molecule/default/tests/test_defatuls.py` - Testinfra verification tests
+- `molecule/default/tests/test_defaults.py` - Testinfra verification tests
 
 ## Key Variables
 
