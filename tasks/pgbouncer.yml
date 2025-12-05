@@ -11,7 +11,7 @@
     state: directory
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0755
+    mode: "0755"
   with_items:
     - "{{ pgbouncer_log_dir }}"
     - "{{ pgbouncer_pid_dir }}"
@@ -20,7 +20,7 @@
   template:
     src: tmpfiles.d_pgbouncer.conf.j2
     dest: /usr/lib/tmpfiles.d/pgbouncer.conf
-    mode: 0644
+    mode: "0644"
   when: ansible_os_family == "Debian"
 
 - name: Divert pgbouncer main configuration file {{ pgbouncer_conf_file }}
@@ -37,7 +37,7 @@
     dest: "{{ pgbouncer_conf_file }}"
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0600
+    mode: "0600"
   notify:
     - Reload pgbouncer
 
@@ -55,7 +55,7 @@
     dest: "{{ pgbouncer_auth_hba_file }}"
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0640
+    mode: "0640"
   notify:
     - Reload pgbouncer
 
@@ -70,7 +70,7 @@
     dest: "{{ pgbouncer_auth_file }}"
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0600
+    mode: "0600"
     content: |
       "stats" "passwordless"
       {% for user in pgbouncer_users %}
@@ -93,4 +93,4 @@
   template:
     src: "etc_logrotate.d_pgbouncer.j2"
     dest: "/etc/logrotate.d/pgbouncer"
-    mode: 0644
+    mode: "0644"
