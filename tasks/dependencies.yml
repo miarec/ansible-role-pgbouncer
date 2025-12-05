@@ -4,23 +4,23 @@
     name: epel-release
     state: present
   when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution != "RedHat"
+    - ansible_facts['os_family'] == "RedHat"
+    - ansible_facts['distribution'] != "RedHat"
 
 - name: Install EPEL | RedHat 8+
   when:
-    - ansible_distribution == "RedHat"
-    - ansible_distribution_major_version >= "8"
+    - ansible_facts['distribution'] == "RedHat"
+    - ansible_facts['distribution_major_version'] >= "8"
   block:
 
     - name: Import EPEL GPG key | RedHat 8+
       rpm_key:
-        key: "http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}"
+        key: "http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_facts['distribution_major_version'] }}"
         state: present
 
     - name: Install EPEL | RedHat 8+
       package:
-        name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
+        name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_facts['distribution_major_version'] }}.noarch.rpm"
         state: present
 
 
@@ -29,16 +29,16 @@
     name: epel
     description: EPEL
     baseurl: "https://dl.fedoraproject.org/pub/archive/epel/7/x86_64/"
-    gpgkey: "http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}"
+    gpgkey: "http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_facts['distribution_major_version'] }}"
     enabled: true
   when:
-    - ansible_distribution == "RedHat"
-    - ansible_distribution_major_version == "7"
+    - ansible_facts['distribution'] == "RedHat"
+    - ansible_facts['distribution_major_version'] == "7"
 
 # This will need replaced with deb822_repository eventually,
 # however module Requires ansible 2.15, ansible pacakage version for Centos7 is 2.9
 - name: Add PgBouncer apt repository | Debian
-  when: ansible_os_family == "Debian"
+  when: ansible_facts['os_family'] == "Debian"
   block:
     - name: Make sure the CA certificates are available | Debian
       apt:

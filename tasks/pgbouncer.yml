@@ -21,7 +21,7 @@
     src: tmpfiles.d_pgbouncer.conf.j2
     dest: /usr/lib/tmpfiles.d/pgbouncer.conf
     mode: "0644"
-  when: ansible_os_family == "Debian"
+  when: ansible_facts['os_family'] == "Debian"
 
 - name: Divert pgbouncer main configuration file {{ pgbouncer_conf_file }}
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}.dpkg-divert --rename {{ pgbouncer_conf_file }}
@@ -29,7 +29,7 @@
     creates: "{{ pgbouncer_conf_file }}.dpkg-divert"
   when:
     - _pgbouncer_install.changed
-    - ansible_os_family == "Debian"
+    - ansible_facts['os_family'] == "Debian"
 
 - name: Create pgbouncer configuration file
   template:
@@ -47,7 +47,7 @@
     creates: "{{ pgbouncer_auth_hba_file }}.dpkg-divert"
   when:
     - _pgbouncer_install.changed
-    - ansible_os_family == "Debian"
+    - ansible_facts['os_family'] == "Debian"
 
 - name: Create pgbouncer hba file {{ pgbouncer_auth_hba_file }}
   template:
@@ -63,7 +63,7 @@
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert --rename {{ pgbouncer_conf_dir }}/userlist.txt
   args:
     creates: "{{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert"
-  when: ansible_os_family == "Debian"
+  when: ansible_facts['os_family'] == "Debian"
 
 - name: Add users to userlist.txt
   copy:
