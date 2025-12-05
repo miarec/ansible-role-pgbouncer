@@ -11,7 +11,7 @@
     state: directory
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0755
+    mode: "0755"
   with_items:
     - "{{ pgbouncer_log_dir }}"
     - "{{ pgbouncer_pid_dir }}"
@@ -20,8 +20,8 @@
   template:
     src: tmpfiles.d_pgbouncer.conf.j2
     dest: /usr/lib/tmpfiles.d/pgbouncer.conf
-    mode: 0644
-  when: ansible_os_family == "Debian"
+    mode: "0644"
+  when: ansible_facts['os_family'] == "Debian"
 
 - name: Divert pgbouncer main configuration file {{ pgbouncer_conf_file }}
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}.dpkg-divert --rename {{ pgbouncer_conf_file }}
@@ -29,7 +29,7 @@
     creates: "{{ pgbouncer_conf_file }}.dpkg-divert"
   when:
     - _pgbouncer_install.changed
-    - ansible_os_family == "Debian"
+    - ansible_facts['os_family'] == "Debian"
 
 - name: Create pgbouncer configuration file
   template:
@@ -37,7 +37,7 @@
     dest: "{{ pgbouncer_conf_file }}"
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0600
+    mode: "0600"
   notify:
     - Reload pgbouncer
 
@@ -47,7 +47,7 @@
     creates: "{{ pgbouncer_auth_hba_file }}.dpkg-divert"
   when:
     - _pgbouncer_install.changed
-    - ansible_os_family == "Debian"
+    - ansible_facts['os_family'] == "Debian"
 
 - name: Create pgbouncer hba file {{ pgbouncer_auth_hba_file }}
   template:
@@ -55,7 +55,7 @@
     dest: "{{ pgbouncer_auth_hba_file }}"
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0640
+    mode: "0640"
   notify:
     - Reload pgbouncer
 
@@ -63,14 +63,14 @@
   command: dpkg-divert --quiet --local --divert {{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert --rename {{ pgbouncer_conf_dir }}/userlist.txt
   args:
     creates: "{{ pgbouncer_conf_dir }}/userlist.txt.dpkg-divert"
-  when: ansible_os_family == "Debian"
+  when: ansible_facts['os_family'] == "Debian"
 
 - name: Add users to userlist.txt
   copy:
     dest: "{{ pgbouncer_auth_file }}"
     owner: "{{ pgbouncer_user }}"
     group: "{{ pgbouncer_group }}"
-    mode: 0600
+    mode: "0600"
     content: |
       "stats" "passwordless"
       {% for user in pgbouncer_users %}
@@ -93,4 +93,4 @@
   template:
     src: "etc_logrotate.d_pgbouncer.j2"
     dest: "/etc/logrotate.d/pgbouncer"
-    mode: 0644
+    mode: "0644"

@@ -58,6 +58,50 @@ For a complete list of available parameters, check `defaults/main.yml` file.
 For a description of each parameter, check comments in `templates/pgbouncer.ini.j2` file or the official PGBouncer documentation.
 
 
+## Testing
+
+This role uses [Molecule](https://molecule.readthedocs.io/) with Docker for testing. [uv](https://docs.astral.sh/uv/) is used for dependency management.
+
+### Prerequisites
+
+- Docker
+- uv (install via `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+
+### Running Tests
+
+```bash
+# Run full test suite
+uv run molecule test
+
+# Test against specific distro
+MOLECULE_DISTRO=ubuntu2404 uv run molecule test
+MOLECULE_DISTRO=rockylinux9 uv run molecule test
+```
+
+### Available Distros
+
+| Distribution   | Variable Value  |
+|----------------|-----------------|
+| Ubuntu 22.04   | `ubuntu2204`    |
+| Ubuntu 24.04   | `ubuntu2404`    |
+| Rocky Linux 9  | `rockylinux9`   |
+| RHEL 9         | `rhel9`         |
+
+### Molecule Commands
+
+```bash
+uv run molecule converge    # Create and provision instance
+uv run molecule verify      # Run testinfra tests only
+uv run molecule destroy     # Tear down instance
+uv run molecule login       # SSH into test container
+```
+
+### Linting
+
+```bash
+uv run ansible-lint
+```
+
 ## Dependencies
 
 None.

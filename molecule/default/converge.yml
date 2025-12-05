@@ -3,6 +3,11 @@
   hosts: all
   become: true
 
+  vars:
+    test_db_user: testuser
+    test_db_password: testpassword
+    test_db_name: testdb
+
   pre_tasks:
     - name: Install prerequisites
       block:
@@ -11,9 +16,17 @@
             update_cache: true
             cache_valid_time: 600
           changed_when: false
-          when: ansible_os_family == "Debian"
+          when: ansible_facts['os_family'] == "Debian"
 
   roles:
     - role: ansible-role-pgbouncer
+      vars:
+        pgbouncer_users:
+          - name: "{{ test_db_user }}"
+            pass: "{{ test_db_password }}"
+        pgbouncer_databases:
+          - name: "{{ test_db_name }}"
+            host: 127.0.0.1
+            port: 5432
       tags:
         - pgbouncer
