@@ -1,0 +1,355 @@
+---
+- name: Prepare PostgreSQL with TLS and TLS certificates for PGBouncer
+  hosts: all
+  become: true
+
+  vars:
+    test_db_user: testuser
+    test_db_password: testpassword
+    test_db_name: testdb
+    pgbouncer_tls_dir: /etc/pgbouncer/tls
+    postgresql_tls_dir: /etc/postgresql/tls
+    pgbouncer_user: "{{ 'pgbouncer' if ansible_facts['os_family'] == 'RedHat' else 'postgres' }}"
+    pgbouncer_group: "{{ pgbouncer_user }}"
+    postgres_user: postgres
+    postgres_group: postgres
+
+  tasks:
+    - name: Install OpenSSL
+      package:
+        name: openssl
+        state: present
+
+    # Create postgres user/group first for certificate ownership
+    - name: Create PostgreSQL group
+      group:
+        name: "{{ postgres_group }}"
+        state: present
+
+    - name: Create PostgreSQL user
+      user:
+        name: "{{ postgres_user }}"
+        group: "{{ postgres_group }}"
+        shell: /bin/false
+        system: true
+        create_home: false
+
+    # Generate TLS certificates for PostgreSQL
+    - name: Create PostgreSQL TLS certificate directory
+      file:
+        path: "{{ postgresql_tls_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Generate CA private key
+      command: openssl genrsa -out {{ postgresql_tls_dir }}/ca.key 4096
+      args:
+        creates: "{{ postgresql_tls_dir }}/ca.key"
+
+    - name: Generate CA certificate
+      command: >
+        openssl req -x509 -new -nodes
+        -key {{ postgresql_tls_dir }}/ca.key
+        -sha256 -days 365
+        -out {{ postgresql_tls_dir }}/ca.crt
+        -subj "/CN=Test-CA"
+      args:
+        creates: "{{ postgresql_tls_dir }}/ca.crt"
+
+    - name: Generate PostgreSQL server private key
+      command: openssl genrsa -out {{ postgresql_tls_dir }}/server.key 2048
+      args:
+        creates: "{{ postgresql_tls_dir }}/server.key"
+
+    - name: Generate PostgreSQL server CSR
+      command: >
+        openssl req -new
+        -key {{ postgresql_tls_dir }}/server.key
+        -out {{ postgresql_tls_dir }}/server.csr
+        -subj "/CN=localhost"
+      args:
+        creates: "{{ postgresql_tls_dir }}/server.csr"
+
+    - name: Sign PostgreSQL server certificate with CA
+      command: >
+        openssl x509 -req
+        -in {{ postgresql_tls_dir }}/server.csr
+        -CA {{ postgresql_tls_dir }}/ca.crt
+        -CAkey {{ postgresql_tls_dir }}/ca.key
+        -CAcreateserial
+        -out {{ postgresql_tls_dir }}/server.crt
+        -days 365 -sha256
+      args:
+        creates: "{{ postgresql_tls_dir }}/server.crt"
+
+    - name: Set proper permissions on CA key
+      file:
+        path: "{{ postgresql_tls_dir }}/ca.key"
+        mode: "0600"
+
+    # PostgreSQL requires the server private key to be owned by the
+    # PostgreSQL service user and not be group/world readable
+    - name: Set proper permissions on PostgreSQL server key
+      file:
+        path: "{{ postgresql_tls_dir }}/server.key"
+        mode: "0600"
+        owner: "{{ postgres_user }}"
+        group: "{{ postgres_group }}"
+
+    - name: Set proper permissions on certificates
+      file:
+        path: "{{ item }}"
+        mode: "0644"
+      loop:
+        - "{{ postgresql_tls_dir }}/ca.crt"
+        - "{{ postgresql_tls_dir }}/server.crt"
+
+    # Debian/Ubuntu installation
+    - name: Install PostgreSQL (Debian/Ubuntu)
+      when: ansible_facts['os_family'] == "Debian"
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: true
+            cache_valid_time: 600
+          changed_when: false
+
+        - name: Install PostgreSQL packages
+          apt:
+            name:
+              - postgresql
+              - postgresql-contrib
+              - postgresql-client
+              - python3-psycopg2
+            state: present
+
+    # RedHat/Rocky installation
+    - name: Install PostgreSQL (RedHat/Rocky)
+      when: ansible_facts['os_family'] == "RedHat"
+      block:
+        - name: Install PostgreSQL packages
+          yum:
+            name:
+              - postgresql-server
+              - postgresql-contrib
+              - python3-psycopg2
+            state: present
+
+        - name: Check if PostgreSQL is initialized
+          stat:
+            path: /var/lib/pgsql/data/pg_hba.conf
+          register: pg_hba_conf
+
+        - name: Initialize PostgreSQL database
+          command: postgresql-setup --initdb
+          changed_when: true
+          when: not pg_hba_conf.stat.exists
+
+    # Configure PostgreSQL paths
+    - name: Find PostgreSQL config directory (Debian)
+      when: ansible_facts['os_family'] == "Debian"
+      block:
+        - name: Get PostgreSQL version directory
+          shell: set -o pipefail && ls -1 /etc/postgresql/ | head -1
+          args:
+            executable: /bin/bash
+          register: pg_version
+          changed_when: false
+
+        - name: Set PostgreSQL paths for Debian
+          set_fact:
+            pg_conf_file: "/etc/postgresql/{{ pg_version.stdout }}/main/postgresql.conf"
+            pg_hba_file: "/etc/postgresql/{{ pg_version.stdout }}/main/pg_hba.conf"
+
+    - name: Set PostgreSQL paths for RedHat
+      when: ansible_facts['os_family'] == "RedHat"
+      set_fact:
+        pg_conf_file: "/var/lib/pgsql/data/postgresql.conf"
+        pg_hba_file: "/var/lib/pgsql/data/pg_hba.conf"
+
+    # Configure PostgreSQL with TLS
+    - name: Enable SSL in PostgreSQL
+      lineinfile:
+        path: "{{ pg_conf_file }}"
+        regexp: "^#?ssl\\s*="
+        line: "ssl = on"
+        state: present
+      notify: Restart PostgreSQL
+
+    - name: Configure SSL certificate file
+      lineinfile:
+        path: "{{ pg_conf_file }}"
+        regexp: "^#?ssl_cert_file\\s*="
+        line: "ssl_cert_file = '{{ postgresql_tls_dir }}/server.crt'"
+        state: present
+      notify: Restart PostgreSQL
+
+    - name: Configure SSL key file
+      lineinfile:
+        path: "{{ pg_conf_file }}"
+        regexp: "^#?ssl_key_file\\s*="
+        line: "ssl_key_file = '{{ postgresql_tls_dir }}/server.key'"
+        state: present
+      notify: Restart PostgreSQL
+
+    - name: Configure SSL CA file
+      lineinfile:
+        path: "{{ pg_conf_file }}"
+        regexp: "^#?ssl_ca_file\\s*="
+        line: "ssl_ca_file = '{{ postgresql_tls_dir }}/ca.crt'"
+        state: present
+      notify: Restart PostgreSQL
+
+    # Start PostgreSQL service
+    - name: Start and enable PostgreSQL service
+      service:
+        name: postgresql
+        state: started
+        enabled: true
+
+    - name: Flush handlers to restart PostgreSQL with TLS
+      meta: flush_handlers
+
+    # Set password_encryption to md5 BEFORE creating users
+    - name: Set password_encryption to md5 for PGBouncer compatibility
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_set:
+        name: password_encryption
+        value: md5
+      notify: Reload PostgreSQL
+
+    - name: Flush handlers to apply password_encryption setting
+      meta: flush_handlers
+
+    - name: Create test database
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ test_db_name }}"
+        state: present
+
+    # Create user with explicit md5-compatible password
+    - name: Create test user with password
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: "{{ test_db_user }}"
+        password: "{{ test_db_password }}"
+        state: present
+
+    - name: Grant privileges to test user
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_privs:
+        database: "{{ test_db_name }}"
+        privs: ALL
+        type: database
+        role: "{{ test_db_user }}"
+
+    # Configure pg_hba for TLS connections (hostssl) with md5
+    - name: Configure pg_hba.conf for TLS md5 authentication from localhost
+      community.postgresql.postgresql_pg_hba:
+        dest: "{{ pg_hba_file }}"
+        contype: hostssl
+        databases: all
+        users: all
+        source: 127.0.0.1/32
+        method: md5
+        state: present
+      notify: Reload PostgreSQL
+
+    # Also add host entry for non-TLS testing (direct PostgreSQL connection test)
+    - name: Configure pg_hba.conf for non-TLS md5 authentication from localhost
+      community.postgresql.postgresql_pg_hba:
+        dest: "{{ pg_hba_file }}"
+        contype: host
+        databases: all
+        users: all
+        source: 127.0.0.1/32
+        method: md5
+        state: present
+      notify: Reload PostgreSQL
+
+    - name: Flush handlers to reload PostgreSQL immediately
+      meta: flush_handlers
+
+    # Generate TLS certificates for PGBouncer (using same CA)
+    - name: Create pgbouncer group
+      group:
+        name: "{{ pgbouncer_group }}"
+        state: present
+
+    - name: Create pgbouncer user
+      user:
+        name: "{{ pgbouncer_user }}"
+        group: "{{ pgbouncer_group }}"
+        shell: /bin/false
+        system: true
+        create_home: false
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Create PGBouncer TLS certificate directory
+      file:
+        path: "{{ pgbouncer_tls_dir }}"
+        state: directory
+        mode: "0755"
+
+    # Copy CA certificate for PGBouncer to verify PostgreSQL
+    - name: Copy CA certificate to PGBouncer TLS directory
+      copy:
+        src: "{{ postgresql_tls_dir }}/ca.crt"
+        dest: "{{ pgbouncer_tls_dir }}/ca.crt"
+        remote_src: true
+        mode: "0644"
+
+    - name: Generate PGBouncer server private key
+      command: openssl genrsa -out {{ pgbouncer_tls_dir }}/server.key 2048
+      args:
+        creates: "{{ pgbouncer_tls_dir }}/server.key"
+
+    - name: Generate PGBouncer server CSR
+      command: >
+        openssl req -new
+        -key {{ pgbouncer_tls_dir }}/server.key
+        -out {{ pgbouncer_tls_dir }}/server.csr
+        -subj "/CN=pgbouncer"
+      args:
+        creates: "{{ pgbouncer_tls_dir }}/server.csr"
+
+    - name: Sign PGBouncer server certificate with CA
+      command: >
+        openssl x509 -req
+        -in {{ pgbouncer_tls_dir }}/server.csr
+        -CA {{ postgresql_tls_dir }}/ca.crt
+        -CAkey {{ postgresql_tls_dir }}/ca.key
+        -CAcreateserial
+        -out {{ pgbouncer_tls_dir }}/server.crt
+        -days 365 -sha256
+      args:
+        creates: "{{ pgbouncer_tls_dir }}/server.crt"
+
+    # PGBouncer requires the server private key to be readable by the
+    # PGBouncer service user
+    - name: Set proper permissions on PGBouncer server key
+      file:
+        path: "{{ pgbouncer_tls_dir }}/server.key"
+        mode: "0600"
+        owner: "{{ pgbouncer_user }}"
+        group: "{{ pgbouncer_group }}"
+
+    - name: Set proper permissions on PGBouncer server certificate
+      file:
+        path: "{{ pgbouncer_tls_dir }}/server.crt"
+        mode: "0644"
+
+  handlers:
+    - name: Restart PostgreSQL
+      service:
+        name: postgresql
+        state: restarted
+
+    - name: Reload PostgreSQL
+      service:
+        name: postgresql
+        state: reloaded

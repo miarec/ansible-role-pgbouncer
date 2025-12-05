@@ -1,0 +1,43 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+
+  vars:
+    test_db_user: testuser
+    test_db_password: testpassword
+    test_db_name: testdb
+    pgbouncer_tls_dir: /etc/pgbouncer/tls
+
+  pre_tasks:
+    - name: Install prerequisites
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: true
+            cache_valid_time: 600
+          changed_when: false
+          when: ansible_facts['os_family'] == "Debian"
+
+  roles:
+    - role: ansible-role-pgbouncer
+      vars:
+        pgbouncer_users:
+          - name: "{{ test_db_user }}"
+            pass: "{{ test_db_password }}"
+        pgbouncer_databases:
+          - name: "{{ test_db_name }}"
+            host: 127.0.0.1
+            port: 5432
+        # Enable TLS for client connections
+        pgbouncer_client_tls: true
+        pgbouncer_client_tls_sslmode: require
+        pgbouncer_client_tls_key_file: "{{ pgbouncer_tls_dir }}/server.key"
+        pgbouncer_client_tls_cert_file: "{{ pgbouncer_tls_dir }}/server.crt"
+        pgbouncer_client_tls_ca_file: "{{ pgbouncer_tls_dir }}/ca.crt"
+        # Enable TLS for server (backend PostgreSQL) connections
+        pgbouncer_server_tls: true
+        pgbouncer_server_tls_sslmode: require
+        pgbouncer_server_tls_ca_file: "{{ pgbouncer_tls_dir }}/ca.crt"
+      tags:
+        - pgbouncer
