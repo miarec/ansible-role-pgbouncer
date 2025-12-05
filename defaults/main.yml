@@ -178,8 +178,8 @@ pgbouncer_server_tls: false              # If true, pgbouncer will be configured
 pgbouncer_server_tls_sslmode: prefer
 # TLS mode to use for connections to PostgreSQL servers. The default mode is prefer.
 # disable - Plain TCP. TLS is not even requested from the server.
-# allow - FIXME: if server rejects plain, try TLS?
-# prefer - TLS connection is always requested first from PostgreSQL. If refused, the connection will be established over plain TCP. Server certificate is not validated. Default
+# allow - First try plain TCP. If server rejects it, try TLS. Server certificate is not validated.
+# prefer - First try TLS. If server rejects it, fall back to plain TCP. Server certificate is not validated. Default.
 # require - Connection must go over TLS. If server rejects it, plain TCP is not attempted. Server certificate is not validated.
 # verify-ca - Connection must go over TLS and server certificate must be valid according to server_tls_ca_file. Server host name is not checked against certificate.
 # verify-full - Connection must go over TLS and server certificate must be valid according to server_tls_ca_file. Server host name must match certificate information.

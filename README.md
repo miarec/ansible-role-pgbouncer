@@ -58,6 +58,83 @@ For a complete list of available parameters, check `defaults/main.yml` file.
 For a description of each parameter, check comments in `templates/pgbouncer.ini.j2` file or the official PGBouncer documentation.
 
 
+### TLS Configuration
+
+PGBouncer supports TLS encryption in two modes:
+
+- **Client-side TLS**: Encrypt connections from clients to PGBouncer
+- **Server-side TLS**: Encrypt connections from PGBouncer to PostgreSQL backend
+
+#### Client-side TLS (clients → PGBouncer)
+
+Enable TLS for incoming client connections:
+
+```yaml
+pgbouncer_client_tls: true
+pgbouncer_client_tls_sslmode: require    # require, verify-ca, or verify-full
+pgbouncer_client_tls_key_file: /etc/pgbouncer/tls/server.key
+pgbouncer_client_tls_cert_file: /etc/pgbouncer/tls/server.crt
+pgbouncer_client_tls_ca_file: /etc/pgbouncer/tls/ca.crt  # Optional, for client cert validation
+```
+
+#### Server-side TLS (PGBouncer → PostgreSQL)
+
+Enable TLS for connections to PostgreSQL backend:
+
+```yaml
+pgbouncer_server_tls: true
+pgbouncer_server_tls_sslmode: require    # require, verify-ca, or verify-full
+pgbouncer_server_tls_ca_file: /etc/pgbouncer/tls/ca.crt  # For server cert validation
+# Optional: client certificate for mutual TLS with PostgreSQL
+pgbouncer_server_tls_key_file: /etc/pgbouncer/tls/client.key
+pgbouncer_server_tls_cert_file: /etc/pgbouncer/tls/client.crt
+```
+
+#### Full TLS Example (End-to-End Encryption)
+
+```yaml
+- hosts: db
+  become: yes
+  vars:
+    pgbouncer_users:
+      - name: appuser
+        pass: secretpassword
+
+    pgbouncer_databases:
+      - name: myapp
+        host: db.example.com
+        port: 5432
+
+    # Client TLS (clients connecting to PGBouncer)
+    pgbouncer_client_tls: true
+    pgbouncer_client_tls_sslmode: require
+    pgbouncer_client_tls_key_file: /etc/pgbouncer/tls/server.key
+    pgbouncer_client_tls_cert_file: /etc/pgbouncer/tls/server.crt
+    pgbouncer_client_tls_ca_file: /etc/pgbouncer/tls/ca.crt
+
+    # Server TLS (PGBouncer connecting to PostgreSQL)
+    pgbouncer_server_tls: true
+    pgbouncer_server_tls_sslmode: verify-full
+    pgbouncer_server_tls_ca_file: /etc/pgbouncer/tls/ca.crt
+
+  roles:
+    - ansible-role-pgbouncer
+```
+
+#### SSL Modes Reference
+
+| Mode | Description |
+|------|-------------|
+| `disable` | No TLS, plain TCP only |
+| `allow` | Try plain first, then TLS if rejected |
+| `prefer` | Try TLS first, fall back to plain (default) |
+| `require` | TLS required, no certificate validation |
+| `verify-ca` | TLS required, validate server certificate |
+| `verify-full` | TLS required, validate certificate and hostname |
+
+For production environments, use `require`, `verify-ca`, or `verify-full`.
+
+
 ## Testing
 
 This role uses [Molecule](https://molecule.readthedocs.io/) with Docker for testing. [uv](https://docs.astral.sh/uv/) is used for dependency management.
