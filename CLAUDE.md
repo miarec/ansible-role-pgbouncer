@@ -13,8 +13,12 @@ uv run ansible-lint
 
 ### Running Tests
 ```bash
-# Run full test suite (uses Docker)
+# Run default test scenario (uses Docker)
 uv run molecule test
+
+# Run specific test scenario
+uv run molecule test -s tls-client
+uv run molecule test -s tls-full
 
 # Test against specific distro
 MOLECULE_DISTRO=ubuntu2404 uv run molecule test
@@ -23,12 +27,18 @@ MOLECULE_DISTRO=rockylinux9 uv run molecule test
 # Available distros: ubuntu2204, ubuntu2404, rockylinux9, rhel9
 ```
 
+### Test Scenarios
+- `default` - Basic PGBouncer installation without TLS
+- `tls-client` - TLS enabled for client connections only (clients -> PGBouncer)
+- `tls-full` - TLS enabled for both client and server connections (clients -> PGBouncer -> PostgreSQL)
+
 ### Molecule Commands
 ```bash
-uv run molecule converge    # Create and provision instance
-uv run molecule verify      # Run testinfra tests only
-uv run molecule destroy     # Tear down instance
-uv run molecule login       # SSH into test container
+uv run molecule converge              # Create and provision instance
+uv run molecule converge -s tls-full  # Run specific scenario
+uv run molecule verify                # Run testinfra tests only
+uv run molecule destroy               # Tear down instance
+uv run molecule login                 # SSH into test container
 ```
 
 ## Architecture
@@ -40,7 +50,7 @@ Standard Ansible role structure:
 - `tasks/pgbouncer.yml` - Main configuration tasks
 - `vars/Debian.yml`, `vars/RedHat.yml` - OS-family specific variables
 - `templates/pgbouncer.ini.j2` - Main config template with parameter documentation
-- `molecule/default/tests/test_defaults.py` - Testinfra verification tests
+- `molecule/*/tests/test_*.py` - Testinfra verification tests for each scenario
 
 ## Key Variables
 

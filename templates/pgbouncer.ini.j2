@@ -65,56 +65,65 @@ unix_socket_dir = {{ pgbouncer_unix_socket_dir }}
 unix_socket_mode = {{ pgbouncer_unix_socket_mode }}
 unix_socket_group = {{ pgbouncer_unix_socket_group }}
 
+{% if pgbouncer_client_tls | bool %}
 ;;;
 ;;; TLS settings for accepting clients
 ;;;
 
 ;; disable, allow, require, verify-ca, verify-full
-;client_tls_sslmode = disable
+client_tls_sslmode = {{ pgbouncer_client_tls_sslmode }}
 
 ;; Path to file that contains trusted CA certs
-;client_tls_ca_file = <system default>
+{% if pgbouncer_client_tls_ca_file %}
+client_tls_ca_file = {{ pgbouncer_client_tls_ca_file }}
+{% endif %}
 
 ;; Private key and cert to present to clients.
 ;; Required for accepting TLS connections from clients.
-;client_tls_key_file =
-;client_tls_cert_file =
+client_tls_key_file = {{ pgbouncer_client_tls_key_file }}
+client_tls_cert_file = {{ pgbouncer_client_tls_cert_file }}
 
 ;; fast, normal, secure, legacy, <ciphersuite string>
-;client_tls_ciphers = fast
+client_tls_ciphers = {{ pgbouncer_client_tls_ciphers }}
 
 ;; all, secure, tlsv1.0, tlsv1.1, tlsv1.2, tlsv1.3
-;client_tls_protocols = secure
+client_tls_protocols = {{ pgbouncer_client_tls_protocols }}
 
 ;; none, auto, legacy
-;client_tls_dheparams = auto
+client_tls_dheparams = {{ pgbouncer_client_tls_dheparams }}
 
 ;; none, auto, <curve name>
-;client_tls_ecdhcurve = auto
+client_tls_ecdhcurve = {{ pgbouncer_client_tls_ecdhcurve }}
+{% endif %}
 
+{% if pgbouncer_server_tls | bool %}
 ;;;
 ;;; TLS settings for connecting to backend databases
 ;;;
 
 ;; disable, allow, require, verify-ca, verify-full
-;server_tls_sslmode = disable
+server_tls_sslmode = {{ pgbouncer_server_tls_sslmode }}
 
 ;; Path to that contains trusted CA certs
-;server_tls_ca_file = <system default>
+{% if pgbouncer_server_tls_ca_file %}
+server_tls_ca_file = {{ pgbouncer_server_tls_ca_file }}
+{% endif %}
 
 ;; Private key and cert to present to backend.
 ;; Needed only if backend server require client cert.
-;server_tls_key_file =
-;server_tls_cert_file =
+{% if pgbouncer_server_tls_key_file %}
+server_tls_key_file = {{ pgbouncer_server_tls_key_file }}
+{% endif %}
+{% if pgbouncer_server_tls_cert_file %}
+server_tls_cert_file = {{ pgbouncer_server_tls_cert_file }}
+{% endif %}
 
 ;; all, secure, tlsv1.0, tlsv1.1, tlsv1.2, tlsv1.3
-;server_tls_protocols = secure
+server_tls_protocols = {{ pgbouncer_server_tls_protocols }}
 
 ;; fast, normal, secure, legacy, <ciphersuite string>
-;server_tls_protocols = secure
-
-;; fast, normal, secure, legacy, <ciphersuite string>
-;server_tls_ciphers = fast
+server_tls_ciphers = {{ pgbouncer_server_tls_ciphers }}
+{% endif %}
 
 ;;;
 ;;; Authentication settings
