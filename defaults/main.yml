@@ -118,7 +118,6 @@ pgbouncer_query_wait_timeout: 120
 pgbouncer_client_idle_timeout: 7200
 pgbouncer_client_login_timeout: 60
 pgbouncer_autodb_idle_timeout: 3600
-pgbouncer_suspend_timeout: 10
 pgbouncer_idle_transaction_timeout: 7200
 
 ###
