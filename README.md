@@ -77,6 +77,16 @@ pgbouncer_client_tls_cert_file: /etc/pgbouncer/tls/server.crt
 pgbouncer_client_tls_ca_file: /etc/pgbouncer/tls/ca.crt  # Optional, for client cert validation
 ```
 
+To upload the files from the Ansible control machine, set the matching `*_src` variables. The role copies each file to its `*_file` path, owned by root with mode 0644 for certificates and 0640 for keys (readable by the PGBouncer group), and restarts PGBouncer when a file changed. Leave a `*_src` variable empty when the file is already on the host.
+
+```yaml
+pgbouncer_client_tls_key_file_src: "{{ playbook_dir }}/certs/pgbouncer/server.key"
+pgbouncer_client_tls_cert_file_src: "{{ playbook_dir }}/certs/pgbouncer/server.crt"
+pgbouncer_client_tls_ca_file_src: "{{ playbook_dir }}/certs/pgbouncer/ca.crt"
+```
+
+The `pgbouncer_server_tls_*_src` variables work the same way for the server-side files.
+
 #### Server-side TLS (PGBouncer → PostgreSQL)
 
 Enable TLS for connections to PostgreSQL backend:
