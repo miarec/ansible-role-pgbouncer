@@ -8,6 +8,7 @@
     test_db_password: testpassword
     test_db_name: testdb
     tls_dir: /etc/pgbouncer/tls
+    tls_src_dir: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/tls"
 
   pre_tasks:
     - name: Install prerequisites
@@ -20,7 +21,7 @@
           when: ansible_facts['os_family'] == "Debian"
 
   roles:
-    - role: ansible-role-pgbouncer
+    - role: "{{ playbook_dir }}/../.." # noqa: role-name[path]
       vars:
         pgbouncer_users:
           - name: "{{ test_db_user }}"
@@ -35,6 +36,10 @@
         pgbouncer_client_tls_key_file: "{{ tls_dir }}/server.key"
         pgbouncer_client_tls_cert_file: "{{ tls_dir }}/server.crt"
         pgbouncer_client_tls_ca_file: "{{ tls_dir }}/ca.crt"
+        # The role uploads the files from the control machine (see prepare.yml)
+        pgbouncer_client_tls_key_file_src: "{{ tls_src_dir }}/server.key"
+        pgbouncer_client_tls_cert_file_src: "{{ tls_src_dir }}/server.crt"
+        pgbouncer_client_tls_ca_file_src: "{{ tls_src_dir }}/ca.crt"
         # Server TLS disabled (non-TLS connection to PostgreSQL)
         pgbouncer_server_tls: false
       tags:

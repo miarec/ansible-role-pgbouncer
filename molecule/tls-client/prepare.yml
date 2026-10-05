@@ -8,8 +8,7 @@
     test_db_password: testpassword
     test_db_name: testdb
     tls_dir: /etc/pgbouncer/tls
-    pgbouncer_user: "{{ 'pgbouncer' if ansible_facts['os_family'] == 'RedHat' else 'postgres' }}"
-    pgbouncer_group: "{{ pgbouncer_user }}"
+    tls_src_dir: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/tls"
 
   tasks:
     # Debian/Ubuntu installation
@@ -132,20 +131,6 @@
       meta: flush_handlers
 
     # Generate TLS certificates for PGBouncer
-    - name: Create pgbouncer group
-      group:
-        name: "{{ pgbouncer_group }}"
-        state: present
-
-    - name: Create pgbouncer user
-      user:
-        name: "{{ pgbouncer_user }}"
-        group: "{{ pgbouncer_group }}"
-        shell: /bin/false
-        system: true
-        create_home: false
-      when: ansible_facts['os_family'] == "RedHat"
-
     - name: Create TLS certificate directory
       file:
         path: "{{ tls_dir }}"
@@ -198,15 +183,6 @@
         path: "{{ tls_dir }}/ca.key"
         mode: "0600"
 
-    # PGBouncer requires the server private key to be readable by the
-    # PGBouncer service user
-    - name: Set proper permissions on server key
-      file:
-        path: "{{ tls_dir }}/server.key"
-        mode: "0600"
-        owner: "{{ pgbouncer_user }}"
-        group: "{{ pgbouncer_group }}"
-
     - name: Set proper permissions on certificates
       file:
         path: "{{ item }}"
@@ -214,6 +190,22 @@
       loop:
         - "{{ tls_dir }}/ca.crt"
         - "{{ tls_dir }}/server.crt"
+
+
+    # The role uploads these files from the control machine, like the
+    # production playbooks do. Move them off the host, so the test proves it.
+    - name: Fetch the TLS files that the role uploads
+      fetch:
+        src: "{{ tls_dir }}/{{ item }}"
+        dest: "{{ tls_src_dir }}/"
+        flat: true
+      loop: [ca.crt, server.crt, server.key]
+
+    - name: Remove the fetched TLS files from the host
+      file:
+        path: "{{ tls_dir }}/{{ item }}"
+        state: absent
+      loop: [ca.crt, server.crt, server.key]
 
   handlers:
     - name: Reload PostgreSQL
