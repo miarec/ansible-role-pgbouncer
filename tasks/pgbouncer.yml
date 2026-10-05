@@ -5,6 +5,11 @@
     state: present
   register: _pgbouncer_install
 
+# The package creates the service account, so the TLS files can get its group.
+- name: Upload TLS files
+  import_tasks: tls.yml
+  when: pgbouncer_client_tls | bool or pgbouncer_server_tls | bool
+
 - name: Create pgbouncer directories
   file:
     path: "{{ item }}"

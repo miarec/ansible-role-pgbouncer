@@ -158,6 +158,12 @@ pgbouncer_client_tls_sslmode: prefer
 pgbouncer_client_tls_ca_file: ""           # Root certificate file to validate client certificates.
 pgbouncer_client_tls_key_file: ""          # Private key for PgBouncer to accept client connections.
 pgbouncer_client_tls_cert_file: ""         # Certificate for private key. Clients can validate it.
+# Local copies of the files above. When a *_src variable is set, the role uploads
+# the file to the matching pgbouncer_client_tls_*_file path and restarts PGBouncer
+# when the file changed. Leave it empty when the file is already on the host.
+pgbouncer_client_tls_ca_file_src: ""
+pgbouncer_client_tls_key_file_src: ""
+pgbouncer_client_tls_cert_file_src: ""
 
 pgbouncer_client_tls_protocols: secure
 # Which TLS protocol versions are allowed.
@@ -186,6 +192,10 @@ pgbouncer_server_tls_sslmode: prefer
 pgbouncer_server_tls_ca_file: ""         # Root certificate file to validate PostgreSQL server certificates.
 pgbouncer_server_tls_key_file: ""        # Private key for PgBouncer to authenticate against PostgreSQL server
 pgbouncer_server_tls_cert_file: ""       # Certificate for private key. PostgreSQL server can validate it.
+# Local copies of the files above, see pgbouncer_client_tls_*_src.
+pgbouncer_server_tls_ca_file_src: ""
+pgbouncer_server_tls_key_file_src: ""
+pgbouncer_server_tls_cert_file_src: ""
 
 pgbouncer_server_tls_protocols: secure
 # Which TLS protocol versions are allowed.
