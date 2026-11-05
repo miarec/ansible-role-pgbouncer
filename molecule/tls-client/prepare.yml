@@ -1,5 +1,30 @@
 ---
-- name: Prepare PostgreSQL and TLS certificates for PGBouncer testing
+# The TLS fixtures are split between the control machine and the target.
+#
+# Control machine (first play):
+#   Generates a test CA and the PGBouncer server certificate in `tls_src_dir`,
+#   defined once in molecule.yml. The CA private key stays here.
+#
+# Target (second play):
+#   Installs PostgreSQL without TLS, with a test database and user.
+#
+# Nothing in prepare writes to /etc/pgbouncer/tls. The role creates that
+# directory and uploads the server certificate, its key, and the CA
+# certificate from `tls_src_dir` during converge, the same way the production
+# playbooks do. A passing test therefore proves the role's upload, not the
+# fixture's.
+
+- name: Generate TLS certificates on the control machine
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Include TLS certificate generation tasks
+      include_tasks: tasks/certificates.yml
+
+- name: Prepare PostgreSQL for PGBouncer testing
   hosts: all
   become: true
 
@@ -7,9 +32,6 @@
     test_db_user: testuser
     test_db_password: testpassword
     test_db_name: testdb
-    tls_dir: /etc/pgbouncer/tls
-    pgbouncer_user: "{{ 'pgbouncer' if ansible_facts['os_family'] == 'RedHat' else 'postgres' }}"
-    pgbouncer_group: "{{ pgbouncer_user }}"
 
   tasks:
     # Debian/Ubuntu installation
@@ -29,7 +51,6 @@
               - postgresql-contrib
               - postgresql-client
               - python3-psycopg2
-              - openssl
             state: present
 
     # RedHat/Rocky installation
@@ -42,7 +63,6 @@
               - postgresql-server
               - postgresql-contrib
               - python3-psycopg2
-              - openssl
             state: present
 
         - name: Check if PostgreSQL is initialized
@@ -130,90 +150,6 @@
 
     - name: Flush handlers to reload PostgreSQL immediately
       meta: flush_handlers
-
-    # Generate TLS certificates for PGBouncer
-    - name: Create pgbouncer group
-      group:
-        name: "{{ pgbouncer_group }}"
-        state: present
-
-    - name: Create pgbouncer user
-      user:
-        name: "{{ pgbouncer_user }}"
-        group: "{{ pgbouncer_group }}"
-        shell: /bin/false
-        system: true
-        create_home: false
-      when: ansible_facts['os_family'] == "RedHat"
-
-    - name: Create TLS certificate directory
-      file:
-        path: "{{ tls_dir }}"
-        state: directory
-        mode: "0755"
-
-    - name: Generate CA private key
-      command: openssl genrsa -out {{ tls_dir }}/ca.key 4096
-      args:
-        creates: "{{ tls_dir }}/ca.key"
-
-    - name: Generate CA certificate
-      command: >
-        openssl req -x509 -new -nodes
-        -key {{ tls_dir }}/ca.key
-        -sha256 -days 365
-        -out {{ tls_dir }}/ca.crt
-        -subj "/CN=PGBouncer-Test-CA"
-      args:
-        creates: "{{ tls_dir }}/ca.crt"
-
-    - name: Generate PGBouncer server private key
-      command: openssl genrsa -out {{ tls_dir }}/server.key 2048
-      args:
-        creates: "{{ tls_dir }}/server.key"
-
-    - name: Generate PGBouncer server CSR
-      command: >
-        openssl req -new
-        -key {{ tls_dir }}/server.key
-        -out {{ tls_dir }}/server.csr
-        -subj "/CN=localhost"
-      args:
-        creates: "{{ tls_dir }}/server.csr"
-
-    - name: Sign PGBouncer server certificate with CA
-      command: >
-        openssl x509 -req
-        -in {{ tls_dir }}/server.csr
-        -CA {{ tls_dir }}/ca.crt
-        -CAkey {{ tls_dir }}/ca.key
-        -CAcreateserial
-        -out {{ tls_dir }}/server.crt
-        -days 365 -sha256
-      args:
-        creates: "{{ tls_dir }}/server.crt"
-
-    - name: Set proper permissions on CA key
-      file:
-        path: "{{ tls_dir }}/ca.key"
-        mode: "0600"
-
-    # PGBouncer requires the server private key to be readable by the
-    # PGBouncer service user
-    - name: Set proper permissions on server key
-      file:
-        path: "{{ tls_dir }}/server.key"
-        mode: "0600"
-        owner: "{{ pgbouncer_user }}"
-        group: "{{ pgbouncer_group }}"
-
-    - name: Set proper permissions on certificates
-      file:
-        path: "{{ item }}"
-        mode: "0644"
-      loop:
-        - "{{ tls_dir }}/ca.crt"
-        - "{{ tls_dir }}/server.crt"
 
   handlers:
     - name: Reload PostgreSQL

@@ -1,5 +1,33 @@
 ---
-- name: Prepare PostgreSQL with TLS and TLS certificates for PGBouncer
+# The TLS fixtures are split between the control machine and the target.
+#
+# Control machine (first play):
+#   Generates a test CA and a server certificate for each of PGBouncer and
+#   PostgreSQL in `tls_src_dir`, defined once in molecule.yml. The CA private
+#   keys stay here.
+#
+# Target (second play):
+#   Installs PostgreSQL and uploads its server certificate and the CA
+#   certificate into /etc/postgresql/tls, then enables TLS and creates a test
+#   database and user.
+#
+# Nothing in prepare writes to /etc/pgbouncer/tls. The role creates that
+# directory and uploads the PGBouncer server certificate, its key, and both
+# CA certificates from `tls_src_dir` during converge, the same way the
+# production playbooks do. A passing test therefore proves the role's upload,
+# not the fixture's.
+
+- name: Generate TLS certificates on the control machine
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Include TLS certificate generation tasks
+      include_tasks: tasks/certificates.yml
+
+- name: Prepare PostgreSQL with TLS for PGBouncer testing
   hosts: all
   become: true
 
@@ -7,103 +35,9 @@
     test_db_user: testuser
     test_db_password: testpassword
     test_db_name: testdb
-    pgbouncer_tls_dir: /etc/pgbouncer/tls
     postgresql_tls_dir: /etc/postgresql/tls
-    pgbouncer_user: "{{ 'pgbouncer' if ansible_facts['os_family'] == 'RedHat' else 'postgres' }}"
-    pgbouncer_group: "{{ pgbouncer_user }}"
-    postgres_user: postgres
-    postgres_group: postgres
 
   tasks:
-    - name: Install OpenSSL
-      package:
-        name: openssl
-        state: present
-
-    # Create postgres user/group first for certificate ownership
-    - name: Create PostgreSQL group
-      group:
-        name: "{{ postgres_group }}"
-        state: present
-
-    - name: Create PostgreSQL user
-      user:
-        name: "{{ postgres_user }}"
-        group: "{{ postgres_group }}"
-        shell: /bin/false
-        system: true
-        create_home: false
-
-    # Generate TLS certificates for PostgreSQL
-    - name: Create PostgreSQL TLS certificate directory
-      file:
-        path: "{{ postgresql_tls_dir }}"
-        state: directory
-        mode: "0755"
-
-    - name: Generate CA private key
-      command: openssl genrsa -out {{ postgresql_tls_dir }}/ca.key 4096
-      args:
-        creates: "{{ postgresql_tls_dir }}/ca.key"
-
-    - name: Generate CA certificate
-      command: >
-        openssl req -x509 -new -nodes
-        -key {{ postgresql_tls_dir }}/ca.key
-        -sha256 -days 365
-        -out {{ postgresql_tls_dir }}/ca.crt
-        -subj "/CN=Test-CA"
-      args:
-        creates: "{{ postgresql_tls_dir }}/ca.crt"
-
-    - name: Generate PostgreSQL server private key
-      command: openssl genrsa -out {{ postgresql_tls_dir }}/server.key 2048
-      args:
-        creates: "{{ postgresql_tls_dir }}/server.key"
-
-    - name: Generate PostgreSQL server CSR
-      command: >
-        openssl req -new
-        -key {{ postgresql_tls_dir }}/server.key
-        -out {{ postgresql_tls_dir }}/server.csr
-        -subj "/CN=localhost"
-      args:
-        creates: "{{ postgresql_tls_dir }}/server.csr"
-
-    - name: Sign PostgreSQL server certificate with CA
-      command: >
-        openssl x509 -req
-        -in {{ postgresql_tls_dir }}/server.csr
-        -CA {{ postgresql_tls_dir }}/ca.crt
-        -CAkey {{ postgresql_tls_dir }}/ca.key
-        -CAcreateserial
-        -out {{ postgresql_tls_dir }}/server.crt
-        -days 365 -sha256
-      args:
-        creates: "{{ postgresql_tls_dir }}/server.crt"
-
-    - name: Set proper permissions on CA key
-      file:
-        path: "{{ postgresql_tls_dir }}/ca.key"
-        mode: "0600"
-
-    # PostgreSQL requires the server private key to be owned by the
-    # PostgreSQL service user and not be group/world readable
-    - name: Set proper permissions on PostgreSQL server key
-      file:
-        path: "{{ postgresql_tls_dir }}/server.key"
-        mode: "0600"
-        owner: "{{ postgres_user }}"
-        group: "{{ postgres_group }}"
-
-    - name: Set proper permissions on certificates
-      file:
-        path: "{{ item }}"
-        mode: "0644"
-      loop:
-        - "{{ postgresql_tls_dir }}/ca.crt"
-        - "{{ postgresql_tls_dir }}/server.crt"
-
     # Debian/Ubuntu installation
     - name: Install PostgreSQL (Debian/Ubuntu)
       when: ansible_facts['os_family'] == "Debian"
@@ -158,14 +92,40 @@
 
         - name: Set PostgreSQL paths for Debian
           set_fact:
-            pg_conf_file: "/etc/postgresql/{{ pg_version.stdout }}/main/postgresql.conf"
             pg_hba_file: "/etc/postgresql/{{ pg_version.stdout }}/main/pg_hba.conf"
+            pg_conf_file: "/etc/postgresql/{{ pg_version.stdout }}/main/postgresql.conf"
 
     - name: Set PostgreSQL paths for RedHat
       when: ansible_facts['os_family'] == "RedHat"
       set_fact:
-        pg_conf_file: "/var/lib/pgsql/data/postgresql.conf"
         pg_hba_file: "/var/lib/pgsql/data/pg_hba.conf"
+        pg_conf_file: "/var/lib/pgsql/data/postgresql.conf"
+
+    # Upload the PostgreSQL server certificate. The certificates are generated
+    # on the control machine (see tasks/certificates.yml). The package install
+    # above creates the postgres user, which owns the files. PostgreSQL
+    # requires its private key to be owned by its user and not group or world
+    # readable.
+    - name: Create PostgreSQL TLS directory
+      file:
+        path: "{{ postgresql_tls_dir }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: "0750"
+
+    - name: Upload PostgreSQL server certificate and CA certificate
+      copy:
+        src: "{{ tls_src_dir }}/{{ item.src }}"
+        dest: "{{ postgresql_tls_dir }}/{{ item.src | basename }}"
+        owner: postgres
+        group: postgres
+        mode: "{{ item.mode }}"
+      loop:
+        - { src: postgresql/server.key, mode: "0600" }
+        - { src: postgresql/server.crt, mode: "0644" }
+        - { src: postgresql/ca.crt, mode: "0644" }
+      notify: Restart PostgreSQL
 
     # Configure PostgreSQL with TLS
     - name: Enable SSL in PostgreSQL
@@ -274,82 +234,13 @@
     - name: Flush handlers to reload PostgreSQL immediately
       meta: flush_handlers
 
-    # Generate TLS certificates for PGBouncer (using same CA)
-    - name: Create pgbouncer group
-      group:
-        name: "{{ pgbouncer_group }}"
-        state: present
-
-    - name: Create pgbouncer user
-      user:
-        name: "{{ pgbouncer_user }}"
-        group: "{{ pgbouncer_group }}"
-        shell: /bin/false
-        system: true
-        create_home: false
-      when: ansible_facts['os_family'] == "RedHat"
-
-    - name: Create PGBouncer TLS certificate directory
-      file:
-        path: "{{ pgbouncer_tls_dir }}"
-        state: directory
-        mode: "0755"
-
-    # Copy CA certificate for PGBouncer to verify PostgreSQL
-    - name: Copy CA certificate to PGBouncer TLS directory
-      copy:
-        src: "{{ postgresql_tls_dir }}/ca.crt"
-        dest: "{{ pgbouncer_tls_dir }}/ca.crt"
-        remote_src: true
-        mode: "0644"
-
-    - name: Generate PGBouncer server private key
-      command: openssl genrsa -out {{ pgbouncer_tls_dir }}/server.key 2048
-      args:
-        creates: "{{ pgbouncer_tls_dir }}/server.key"
-
-    - name: Generate PGBouncer server CSR
-      command: >
-        openssl req -new
-        -key {{ pgbouncer_tls_dir }}/server.key
-        -out {{ pgbouncer_tls_dir }}/server.csr
-        -subj "/CN=pgbouncer"
-      args:
-        creates: "{{ pgbouncer_tls_dir }}/server.csr"
-
-    - name: Sign PGBouncer server certificate with CA
-      command: >
-        openssl x509 -req
-        -in {{ pgbouncer_tls_dir }}/server.csr
-        -CA {{ postgresql_tls_dir }}/ca.crt
-        -CAkey {{ postgresql_tls_dir }}/ca.key
-        -CAcreateserial
-        -out {{ pgbouncer_tls_dir }}/server.crt
-        -days 365 -sha256
-      args:
-        creates: "{{ pgbouncer_tls_dir }}/server.crt"
-
-    # PGBouncer requires the server private key to be readable by the
-    # PGBouncer service user
-    - name: Set proper permissions on PGBouncer server key
-      file:
-        path: "{{ pgbouncer_tls_dir }}/server.key"
-        mode: "0600"
-        owner: "{{ pgbouncer_user }}"
-        group: "{{ pgbouncer_group }}"
-
-    - name: Set proper permissions on PGBouncer server certificate
-      file:
-        path: "{{ pgbouncer_tls_dir }}/server.crt"
-        mode: "0644"
-
   handlers:
-    - name: Restart PostgreSQL
-      service:
-        name: postgresql
-        state: restarted
-
     - name: Reload PostgreSQL
       service:
         name: postgresql
         state: reloaded
+
+    - name: Restart PostgreSQL
+      service:
+        name: postgresql
+        state: restarted

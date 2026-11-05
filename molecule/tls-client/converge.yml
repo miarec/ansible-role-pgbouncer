@@ -20,7 +20,7 @@
           when: ansible_facts['os_family'] == "Debian"
 
   roles:
-    - role: ansible-role-pgbouncer
+    - role: "{{ playbook_dir }}/../.." # noqa: role-name[path]
       vars:
         pgbouncer_users:
           - name: "{{ test_db_user }}"
@@ -35,6 +35,11 @@
         pgbouncer_client_tls_key_file: "{{ tls_dir }}/server.key"
         pgbouncer_client_tls_cert_file: "{{ tls_dir }}/server.crt"
         pgbouncer_client_tls_ca_file: "{{ tls_dir }}/ca.crt"
+        # The role creates the directory and uploads the files from the
+        # control machine (see prepare.yml and molecule.yml).
+        pgbouncer_client_tls_key_file_src: "{{ tls_src_dir }}/pgbouncer/server.key"
+        pgbouncer_client_tls_cert_file_src: "{{ tls_src_dir }}/pgbouncer/server.crt"
+        pgbouncer_client_tls_ca_file_src: "{{ tls_src_dir }}/ca.crt"
         # Server TLS disabled (non-TLS connection to PostgreSQL)
         pgbouncer_server_tls: false
       tags:

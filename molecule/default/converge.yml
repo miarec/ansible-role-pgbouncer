@@ -19,7 +19,7 @@
           when: ansible_facts['os_family'] == "Debian"
 
   roles:
-    - role: ansible-role-pgbouncer
+    - role: "{{ playbook_dir }}/../.." # noqa: role-name[path]
       vars:
         pgbouncer_users:
           - name: "{{ test_db_user }}"

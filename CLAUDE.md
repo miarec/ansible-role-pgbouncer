@@ -48,6 +48,8 @@ Standard Ansible role structure:
 - `tasks/main.yml` - Entry point, imports OS-specific vars and task files
 - `tasks/dependencies.yml` - Package installation (APT/YUM repos)
 - `tasks/pgbouncer.yml` - Main configuration tasks
+- `tasks/tls_upload.yml` - Upload TLS files from the control machine (when a `*_src` variable is set)
+- `tasks/tls_verify.yml` - Fail if the PGBouncer service user cannot read a TLS file (when TLS is enabled)
 - `vars/Debian.yml`, `vars/RedHat.yml` - OS-family specific variables
 - `templates/pgbouncer.ini.j2` - Main config template with parameter documentation
 - `molecule/*/tests/test_*.py` - Testinfra verification tests for each scenario
