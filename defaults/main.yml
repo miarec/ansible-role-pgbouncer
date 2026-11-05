@@ -161,6 +161,7 @@ pgbouncer_client_tls_cert_file: ""         # Certificate for private key. Client
 # Local copies of the files above. When a *_src variable is set, the role uploads
 # the file to the matching pgbouncer_client_tls_*_file path and restarts PGBouncer
 # when the file changed. Leave it empty when the file is already on the host.
+# Either way, the role fails if the PGBouncer service user cannot read the file.
 pgbouncer_client_tls_ca_file_src: ""
 pgbouncer_client_tls_key_file_src: ""
 pgbouncer_client_tls_cert_file_src: ""

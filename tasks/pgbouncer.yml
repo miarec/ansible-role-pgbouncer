@@ -6,8 +6,16 @@
   register: _pgbouncer_install
 
 # The package creates the service account, so the TLS files can get its group.
+# The role sets permissions only on the files it uploads; a file that is
+# already on the host is left as is.
 - name: Upload TLS files
-  import_tasks: tls.yml
+  import_tasks: tls_upload.yml
+  when: pgbouncer_client_tls | bool or pgbouncer_server_tls | bool
+
+# Runs after the upload and before the configuration file is written, so a
+# failure leaves the running configuration untouched.
+- name: Verify the TLS files are readable
+  import_tasks: tls_verify.yml
   when: pgbouncer_client_tls | bool or pgbouncer_server_tls | bool
 
 - name: Create pgbouncer directories
