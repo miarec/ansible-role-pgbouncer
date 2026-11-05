@@ -15,7 +15,7 @@
 
     - name: Import EPEL GPG key | RedHat 8+
       rpm_key:
-        key: "http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_facts['distribution_major_version'] }}"
+        key: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_facts['distribution_major_version'] }}"
         state: present
 
     - name: Install EPEL | RedHat 8+
@@ -29,7 +29,7 @@
     name: epel
     description: EPEL
     baseurl: "https://dl.fedoraproject.org/pub/archive/epel/7/x86_64/"
-    gpgkey: "http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_facts['distribution_major_version'] }}"
+    gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_facts['distribution_major_version'] }}"
     enabled: true
   when:
     - ansible_facts['distribution'] == "RedHat"
