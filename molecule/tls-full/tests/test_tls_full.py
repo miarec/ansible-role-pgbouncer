@@ -4,6 +4,18 @@ import testinfra.utils.ansible_runner
 testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
     os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
 
+PGBOUNCER_TLS_DIR = "/etc/pgbouncer/tls"
+POSTGRESQL_TLS_DIR = "/etc/postgresql/tls"
+
+
+def pgbouncer_user(host):
+    """Return the user PGBouncer runs as: postgres on Debian, pgbouncer on RedHat."""
+    users = {p.user for p in host.process.filter(comm="pgbouncer")}
+    assert users, "No pgbouncer process is running"
+    assert "root" not in users, "A pgbouncer process runs as root"
+    assert len(users) == 1, f"pgbouncer runs as more than one user: {users}"
+    return users.pop()
+
 
 def test_pgbouncer_service_running(host):
     """Verify PGBouncer service is enabled and running."""
@@ -51,20 +63,47 @@ def test_pgbouncer_server_tls_config(host):
 
 
 def test_tls_certificates_exist(host):
-    """Verify TLS certificates are properly created."""
-    pgbouncer_files = [
-        "/etc/pgbouncer/tls/ca.crt",
-        "/etc/pgbouncer/tls/server.crt",
-        "/etc/pgbouncer/tls/server.key"
+    """Verify the TLS files were uploaded, by the role and by prepare."""
+    files = [
+        # Uploaded by the role
+        *(f"{PGBOUNCER_TLS_DIR}/{name}" for name in ("ca.crt", "server.crt", "server.key")),
+        # Uploaded by prepare
+        *(f"{POSTGRESQL_TLS_DIR}/{name}" for name in ("ca.crt", "server.crt", "server.key")),
     ]
-    postgresql_files = [
-        "/etc/postgresql/tls/ca.crt",
-        "/etc/postgresql/tls/server.crt",
-        "/etc/postgresql/tls/server.key"
-    ]
-    for f in pgbouncer_files + postgresql_files:
-        cert = host.file(f)
-        assert cert.exists, f"Certificate file {f} does not exist"
+    for path in files:
+        f = host.file(path)
+        assert f.exists, f"Certificate file {path} does not exist"
+        assert f.is_file, f"Not a file: {path}"
+
+
+def test_ca_key_not_on_host(host):
+    """The CA private key stays on the control machine."""
+    assert not host.file(f"{PGBOUNCER_TLS_DIR}/ca.key").exists
+    assert not host.file(f"{POSTGRESQL_TLS_DIR}/ca.key").exists
+
+
+def test_tls_file_permissions(host):
+    """The role uploads the private key readable by the service group only."""
+    group = host.user(pgbouncer_user(host)).group
+    key = host.file(f"{PGBOUNCER_TLS_DIR}/server.key")
+    assert key.user == "root", "server.key is not owned by root"
+    assert key.group == group, f"server.key is not group {group}"
+    assert key.mode == 0o640, "server.key is not 0640"
+    for name in ("ca.crt", "server.crt"):
+        cert = host.file(f"{PGBOUNCER_TLS_DIR}/{name}")
+        assert cert.user == "root", f"{name} is not owned by root"
+        assert cert.mode == 0o644, f"{name} is not 0644"
+    # The role created the directory, so it has the fixed mode, not the umask.
+    tls_dir = host.file(PGBOUNCER_TLS_DIR)
+    assert tls_dir.user == "root", "TLS directory is not owned by root"
+    assert tls_dir.mode == 0o755, "TLS directory is not 0755"
+
+
+def test_service_user_can_read_tls_key(host):
+    """The service user reads the private key through its group."""
+    user = pgbouncer_user(host)
+    result = host.run(f"runuser -u {user} -- cat {PGBOUNCER_TLS_DIR}/server.key")
+    assert result.rc == 0, f"{user} cannot read server.key: {result.stderr}"
 
 
 def test_pgbouncer_tls_connection_with_sslmode_require(host):
