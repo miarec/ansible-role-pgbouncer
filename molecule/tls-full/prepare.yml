@@ -4,7 +4,7 @@
 # Control machine (first play):
 #   Generates a test CA and a server certificate for each of PGBouncer and
 #   PostgreSQL in `tls_src_dir`, defined once in molecule.yml. The CA private
-#   key stays here.
+#   keys stay here.
 #
 # Target (second play):
 #   Installs PostgreSQL and uploads its server certificate and the CA
@@ -12,10 +12,10 @@
 #   database and user.
 #
 # Nothing in prepare writes to /etc/pgbouncer/tls. The role creates that
-# directory and uploads the PGBouncer server certificate, its key, and the CA
-# certificate from `tls_src_dir` during converge, the same way the production
-# playbooks do. A passing test therefore proves the role's upload, not the
-# fixture's.
+# directory and uploads the PGBouncer server certificate, its key, and both
+# CA certificates from `tls_src_dir` during converge, the same way the
+# production playbooks do. A passing test therefore proves the role's upload,
+# not the fixture's.
 
 - name: Generate TLS certificates on the control machine
   hosts: localhost
@@ -124,7 +124,7 @@
       loop:
         - { src: postgresql/server.key, mode: "0600" }
         - { src: postgresql/server.crt, mode: "0644" }
-        - { src: ca.crt, mode: "0644" }
+        - { src: postgresql/ca.crt, mode: "0644" }
       notify: Restart PostgreSQL
 
     # Configure PostgreSQL with TLS

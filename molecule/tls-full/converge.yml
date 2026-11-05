@@ -35,16 +35,18 @@
         pgbouncer_client_tls_key_file: "{{ pgbouncer_tls_dir }}/server.key"
         pgbouncer_client_tls_cert_file: "{{ pgbouncer_tls_dir }}/server.crt"
         pgbouncer_client_tls_ca_file: "{{ pgbouncer_tls_dir }}/ca.crt"
-        # Enable TLS for server (backend PostgreSQL) connections
+        # Enable TLS for server (backend PostgreSQL) connections. verify-full
+        # makes PGBouncer validate the PostgreSQL certificate against the
+        # backend CA, so the test fails if the role put the wrong CA there.
         pgbouncer_server_tls: true
-        pgbouncer_server_tls_sslmode: require
-        pgbouncer_server_tls_ca_file: "{{ pgbouncer_tls_dir }}/ca.crt"
+        pgbouncer_server_tls_sslmode: verify-full
+        pgbouncer_server_tls_ca_file: "{{ pgbouncer_tls_dir }}/postgresql-ca.crt"
         # The role creates the directory and uploads the files from the
-        # control machine (see prepare.yml and molecule.yml). Both sides use
-        # the same CA file, so it is listed twice and the second copy is a no-op.
+        # control machine (see prepare.yml and molecule.yml). PGBouncer and
+        # PostgreSQL each have their own CA.
         pgbouncer_client_tls_key_file_src: "{{ tls_src_dir }}/pgbouncer/server.key"
         pgbouncer_client_tls_cert_file_src: "{{ tls_src_dir }}/pgbouncer/server.crt"
-        pgbouncer_client_tls_ca_file_src: "{{ tls_src_dir }}/ca.crt"
-        pgbouncer_server_tls_ca_file_src: "{{ tls_src_dir }}/ca.crt"
+        pgbouncer_client_tls_ca_file_src: "{{ tls_src_dir }}/pgbouncer/ca.crt"
+        pgbouncer_server_tls_ca_file_src: "{{ tls_src_dir }}/postgresql/ca.crt"
       tags:
         - pgbouncer

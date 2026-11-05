@@ -58,15 +58,16 @@ def test_pgbouncer_server_tls_config(host):
     """Verify PGBouncer server TLS configuration is present."""
     conf = host.file("/etc/pgbouncer/pgbouncer.ini")
     assert conf.exists
-    assert conf.contains("server_tls_sslmode = require")
-    assert conf.contains("server_tls_ca_file = /etc/pgbouncer/tls/ca.crt")
+    assert conf.contains("server_tls_sslmode = verify-full")
+    assert conf.contains(f"server_tls_ca_file = {PGBOUNCER_TLS_DIR}/postgresql-ca.crt")
 
 
 def test_tls_certificates_exist(host):
     """Verify the TLS files were uploaded, by the role and by prepare."""
     files = [
         # Uploaded by the role
-        *(f"{PGBOUNCER_TLS_DIR}/{name}" for name in ("ca.crt", "server.crt", "server.key")),
+        *(f"{PGBOUNCER_TLS_DIR}/{name}"
+          for name in ("ca.crt", "server.crt", "server.key", "postgresql-ca.crt")),
         # Uploaded by prepare
         *(f"{POSTGRESQL_TLS_DIR}/{name}" for name in ("ca.crt", "server.crt", "server.key")),
     ]
@@ -77,9 +78,19 @@ def test_tls_certificates_exist(host):
 
 
 def test_ca_key_not_on_host(host):
-    """The CA private key stays on the control machine."""
-    assert not host.file(f"{PGBOUNCER_TLS_DIR}/ca.key").exists
+    """The CA private keys stay on the control machine."""
+    for name in ("ca.key", "postgresql-ca.key"):
+        assert not host.file(f"{PGBOUNCER_TLS_DIR}/{name}").exists
     assert not host.file(f"{POSTGRESQL_TLS_DIR}/ca.key").exists
+
+
+def test_each_side_has_its_own_ca(host):
+    """The role uploaded two distinct CA files, one per side."""
+    client_ca = host.file(f"{PGBOUNCER_TLS_DIR}/ca.crt")
+    server_ca = host.file(f"{PGBOUNCER_TLS_DIR}/postgresql-ca.crt")
+    assert client_ca.sha256sum != server_ca.sha256sum, "Both sides use the same CA"
+    assert server_ca.sha256sum == host.file(f"{POSTGRESQL_TLS_DIR}/ca.crt").sha256sum, \
+        "The backend CA does not match the CA PostgreSQL was configured with"
 
 
 def test_tls_file_permissions(host):
@@ -89,7 +100,7 @@ def test_tls_file_permissions(host):
     assert key.user == "root", "server.key is not owned by root"
     assert key.group == group, f"server.key is not group {group}"
     assert key.mode == 0o640, "server.key is not 0640"
-    for name in ("ca.crt", "server.crt"):
+    for name in ("ca.crt", "server.crt", "postgresql-ca.crt"):
         cert = host.file(f"{PGBOUNCER_TLS_DIR}/{name}")
         assert cert.user == "root", f"{name} is not owned by root"
         assert cert.mode == 0o644, f"{name} is not 0644"
@@ -139,13 +150,30 @@ def test_pgbouncer_connection_without_tls_fails(host):
 
 
 def test_postgresql_direct_tls_connection(host):
-    """Verify PostgreSQL accepts direct TLS connections."""
+    """Verify PostgreSQL presents a certificate that chains to the backend CA.
+
+    hostaddr connects to the loopback address while host names the certificate
+    subject to verify. libpq before PostgreSQL 16 doesn't match IP addresses in
+    certificate SANs, so host=127.0.0.1 alone fails on RedHat 9.
+    """
     cmd = host.run(
         'PGPASSWORD=testpassword psql '
-        '"host=127.0.0.1 port=5432 user=testuser dbname=testdb sslmode=require" '
+        '"hostaddr=127.0.0.1 host=localhost port=5432 user=testuser dbname=testdb '
+        f'sslmode=verify-full sslrootcert={PGBOUNCER_TLS_DIR}/postgresql-ca.crt" '
         "-c 'SELECT 1;'"
     )
     assert cmd.rc == 0, f"Expected rc=0, got rc={cmd.rc}, stderr={cmd.stderr}"
+
+
+def test_postgresql_rejects_client_side_ca(host):
+    """The client-facing CA does not validate PostgreSQL, so the CAs are not interchangeable."""
+    cmd = host.run(
+        'PGPASSWORD=testpassword psql '
+        '"host=127.0.0.1 port=5432 user=testuser dbname=testdb '
+        f'sslmode=verify-ca sslrootcert={PGBOUNCER_TLS_DIR}/ca.crt" '
+        "-c 'SELECT 1;'"
+    )
+    assert cmd.rc != 0, "PostgreSQL certificate was accepted with the client-facing CA"
 
 
 def test_full_tls_chain_query(host):

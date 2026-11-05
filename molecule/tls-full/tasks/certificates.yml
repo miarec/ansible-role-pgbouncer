@@ -1,50 +1,50 @@
 ---
-# Generate a test PKI on the control machine. These tasks run in the
-# `hosts: localhost` play of prepare.yml and write to `tls_src_dir` only.
-# Nothing here touches the target.
+# Generate a test PKI for each service on the control machine. These tasks run
+# in the `hosts: localhost` play of prepare.yml and write to `tls_src_dir`
+# only. Nothing here touches the target.
 #
-# PGBouncer and PostgreSQL share one CA, like a deployment with an internal
-# CA. Layout of tls_src_dir/:
-#   ca.key, ca.crt                      The test CA. The key never leaves the
-#                                       control machine.
-#   pgbouncer/server.key, server.crt    The certificate PGBouncer presents to
-#                                       its clients. The role uploads these,
-#                                       with ca.crt, during converge.
-#   postgresql/server.key, server.crt   The certificate PostgreSQL presents to
-#                                       PGBouncer. prepare.yml uploads these.
+# PGBouncer and PostgreSQL each get their own CA, so the role uploads two
+# distinct CA files and the test proves that PGBouncer validates PostgreSQL
+# against the one at pgbouncer_server_tls_ca_file. Layout of
+# tls_src_dir/<service>/:
+#   ca.key, ca.crt           The service's CA. The key never leaves the
+#                            control machine.
+#   server.key, server.crt   The certificate the service presents. The role
+#                            uploads PGBouncer's, with both CA certificates,
+#                            during converge. prepare.yml uploads PostgreSQL's.
 #
-# Every command has `creates:`, so a second `molecule prepare` reuses the CA
-# and the server certificates keep chaining to it.
+# Every command has `creates:`, so a second `molecule prepare` reuses the CAs
+# and the server certificates keep chaining to them.
 
 - name: Create certificate directories
   file:
-    path: "{{ item }}"
+    path: "{{ tls_src_dir }}/{{ item }}"
     state: directory
     mode: "0700"
-  loop:
-    - "{{ tls_src_dir }}"
-    - "{{ tls_src_dir }}/pgbouncer"
-    - "{{ tls_src_dir }}/postgresql"
+  loop: [pgbouncer, postgresql]
 
 # ============ CA ============
 - name: Generate CA private key
-  command: openssl genrsa -out {{ tls_src_dir }}/ca.key 4096
+  command: openssl genrsa -out {{ tls_src_dir }}/{{ item }}/ca.key 4096
   args:
-    creates: "{{ tls_src_dir }}/ca.key"
+    creates: "{{ tls_src_dir }}/{{ item }}/ca.key"
+  loop: [pgbouncer, postgresql]
 
 - name: Generate CA certificate
   command: >
     openssl req -x509 -new -nodes
-    -key {{ tls_src_dir }}/ca.key
+    -key {{ tls_src_dir }}/{{ item }}/ca.key
     -sha256 -days 365
-    -out {{ tls_src_dir }}/ca.crt
-    -subj "/CN=Test-CA"
+    -out {{ tls_src_dir }}/{{ item }}/ca.crt
+    -subj "/CN=Test-CA-{{ item }}"
   args:
-    creates: "{{ tls_src_dir }}/ca.crt"
+    creates: "{{ tls_src_dir }}/{{ item }}/ca.crt"
+  loop: [pgbouncer, postgresql]
 
 # ============ Server certificates ============
 # PGBouncer and PostgreSQL run on the target and listen on the loopback
-# interface, so both certificates are issued for localhost.
+# interface, so both certificates are issued for localhost. The IP SAN lets
+# verify-full pass for a connection to 127.0.0.1.
 - name: Generate server private key
   command: openssl genrsa -out {{ tls_src_dir }}/{{ item }}/server.key 2048
   args:
@@ -84,12 +84,12 @@
     creates: "{{ tls_src_dir }}/{{ item }}/server.csr"
   loop: [pgbouncer, postgresql]
 
-- name: Sign server certificate with CA
+- name: Sign server certificate with the service's CA
   command: >
     openssl x509 -req
     -in {{ tls_src_dir }}/{{ item }}/server.csr
-    -CA {{ tls_src_dir }}/ca.crt
-    -CAkey {{ tls_src_dir }}/ca.key
+    -CA {{ tls_src_dir }}/{{ item }}/ca.crt
+    -CAkey {{ tls_src_dir }}/{{ item }}/ca.key
     -CAcreateserial
     -out {{ tls_src_dir }}/{{ item }}/server.crt
     -days 365 -sha256
